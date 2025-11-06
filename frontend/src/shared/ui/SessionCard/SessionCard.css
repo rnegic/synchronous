@@ -1,0 +1,61 @@
+.session-card {
+  margin-bottom: 12px;
+  border-radius: 16px !important;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.session-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12) !important;
+}
+
+.session-card .ant-card-body {
+  padding: 20px !important;
+}
+
+.session-card__content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.session-card__left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.session-card__avatars {
+  margin-bottom: 4px;
+}
+
+.session-card__avatars .ant-avatar {
+  background: linear-gradient(135deg, var(--color-bright-sky) 0%, var(--color-pastel-blue) 100%);
+}
+
+.session-card__name {
+  font-size: 16px;
+  color: var(--color-text);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.session-card__count {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.session-card__right {
+  display: flex;
+  align-items: center;
+}
+
+.session-card__button {
+  box-shadow: var(--shadow-sm) !important;
+}
