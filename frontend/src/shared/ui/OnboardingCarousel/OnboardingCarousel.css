@@ -1,0 +1,31 @@
+.onboarding-carousel {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding: 4px 8px 12px 2px;
+  margin-bottom: 12px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+.onboarding-carousel::-webkit-scrollbar {
+  display: none;
+}
+
+.onboarding-carousel__item {
+  flex: 0 0 82%;
+  max-width: 82%;
+  scroll-snap-align: start;
+}
+
+.onboarding-carousel__item > * {
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .onboarding-carousel__item {
+    flex-basis: 70%;
+    max-width: 70%;
+  }
+}
