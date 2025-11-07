@@ -1,11 +1,14 @@
 import { Drawer } from 'antd';
 import { useNavigate } from 'react-router';
+import { useAppDispatch } from '@/shared/hooks/redux';
+import { startSession } from '@/entities/session/model/activeSessionSlice';
 import { SessionSetupForm } from '@/features/session-create';
 import type { SessionMode } from '@/shared/types';
 import './styles.css';
 
 export function SessionSetupPage() {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
 
   const handleClose = () => {
     navigate('/');
@@ -21,11 +24,29 @@ export function SessionSetupPage() {
   }) => {
     console.log('Session data:', data);
     
+    // Generate session ID
+    const sessionId = `session-${Date.now()}`;
+    
+    // Initialize active session in Redux
+    dispatch(startSession({
+      sessionId,
+      mode: data.mode,
+      groupName: data.groupName || 'Групповая сессия',
+      focusDuration: data.focusDuration,
+      breakDuration: data.breakDuration,
+      tasks: data.tasks.map((title, index) => ({
+        id: `task-${index + 1}`,
+        title,
+        completed: false,
+        createdAt: new Date().toISOString(),
+      })),
+    }));
+    
     // Navigate based on mode
     if (data.mode === 'solo') {
-      navigate('/focus-session/solo-123');
+      navigate('/focus-session');
     } else {
-      navigate('/lobby/group-123');
+      navigate('/lobby');
     }
   };
 
