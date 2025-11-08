@@ -19,7 +19,6 @@ import {
   selectBreakDuration,
 } from '@/entities/session/model/selectors';
 import { startSession, addParticipant } from '@/entities/session/model/activeSessionSlice';
-import { resetSessionSetup } from '@/entities/session/model/sessionSetupSlice';
 import type { User, Task } from '@/shared/types';
 import './styles.css';
 
@@ -65,16 +64,15 @@ export function FocusSessionPage() {
     }
   }, [sessionId, setupTasks, mode, groupName, focusDuration, breakDuration, dispatch]);
   
-  // Redirect to home if session is completed
+  // Redirect to report when session is completed
   useEffect(() => {
     if (isCompleted) {
       message.success('Сессия завершена! Отличная работа! 🎉');
-      dispatch(resetSessionSetup());
       setTimeout(() => {
-        navigate('/');
-      }, 1500);
+        navigate('/session-report');
+      }, 1000);
     }
-  }, [isCompleted, dispatch, navigate]);
+  }, [isCompleted, navigate]);
   
   // Redirect to home if no session data
   if (!sessionId && setupTasks.length === 0) {
