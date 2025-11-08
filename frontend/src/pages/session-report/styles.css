@@ -1,0 +1,64 @@
+.session-report-page {
+  min-height: calc(100vh - 80px);
+  padding: var(--spacing-lg);
+  background: var(--color-background);
+}
+
+.session-report-page__container {
+  max-width: 768px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.session-report-page__tabs {
+  animation: slideUp 0.4s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.session-report-page__tabs-component {
+  background: white;
+  padding: var(--spacing-lg);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.session-report-page__tabs-component .ant-tabs-nav {
+  margin-bottom: var(--spacing-lg) !important;
+}
+
+.session-report-page__tabs-component .ant-tabs-tab {
+  font-size: var(--font-size-lg) !important;
+  font-weight: var(--font-weight-semibold) !important;
+  padding: var(--spacing-md) var(--spacing-lg) !important;
+}
+
+.session-report-page__tabs-component .ant-tabs-tab-active {
+  background: var(--color-sky) !important;
+  border-radius: var(--radius-md) !important;
+}
+
+.session-report-page__home-btn {
+  height: 56px !important;
+  font-size: var(--font-size-lg) !important;
+  font-weight: var(--font-weight-semibold) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base);
+}
+
+.session-report-page__home-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
