@@ -62,11 +62,11 @@ services:
       start_period: 40s
 
   swagger-ui:
-    image: swaggerapi/swagger-ui:latest
+    image: swaggerapi/swagger-ui:v5.17.14
     container_name: synchronous_swagger_ui
     environment:
       - SWAGGER_JSON_URL=http://backend:8080/swagger.yaml
-      - BASE_URL=/swagger
+      - BASE_URL=/swagger/
     networks:
       - synchronous_network
 
