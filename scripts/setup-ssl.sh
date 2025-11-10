@@ -90,7 +90,27 @@ echo -e "${GREEN}Получение SSL сертификата...${NC}"
 echo -e "${YELLOW}Временно останавливаем Nginx контейнер...${NC}"
 docker compose -f /opt/synchronous/docker-compose.yml stop nginx
 
+# Проверка доступности домена
+echo -e "${YELLOW}Проверка доступности домена $DOMAIN...${NC}"
+if ! timeout 5 curl -s http://$DOMAIN > /dev/null 2>&1; then
+    echo -e "${RED}⚠️  Домен $DOMAIN недоступен извне.${NC}"
+    echo -e "${YELLOW}Возможные причины:${NC}"
+    echo "  1. DNS еще не распространился (подождите 15-30 минут)"
+    echo "  2. A запись не настроена или указывает на другой IP"
+    echo "  3. Firewall блокирует порт 80"
+    echo ""
+    echo -e "${YELLOW}Продолжить получение сертификата? (y/n)${NC}"
+    read -p "> " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo -e "${YELLOW}Запускаем Nginx обратно...${NC}"
+        docker compose -f /opt/synchronous/docker-compose.yml start nginx
+        exit 1
+    fi
+fi
+
 # Получение сертификата в standalone режиме
+echo -e "${GREEN}Получение сертификата через standalone...${NC}"
 certbot certonly --standalone -d $DOMAIN --non-interactive --agree-tos --email admin@$DOMAIN
 
 # Запуск Nginx обратно
