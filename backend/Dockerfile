@@ -29,7 +29,7 @@ COPY --from=builder /app/configs ./configs
 # Copy migrations
 COPY --from=builder /app/migrations ./migrations
 
-# Copy swagger.yaml (если существует)
+# Copy swagger.yaml (если существует в корне backend)
 RUN --mount=from=builder,source=/app,target=/tmp/app \
     if [ -f /tmp/app/swagger.yaml ]; then \
         cp /tmp/app/swagger.yaml ./swagger.yaml; \

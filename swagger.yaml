@@ -1,0 +1,1214 @@
+openapi: 3.0.0
+info:
+  title: Max Bot API - Focus Sessions Application
+  description: |
+    API для мини-приложения синхронных сессий фокуса с интеграцией Max API.
+    
+    ## Аутентификация
+    API использует Bearer токены для аутентификации. Получите токен через endpoint `/api/v1/auth/login`.
+    
+    ## Особенности
+    - Solo и Group сессии фокуса
+    - Real-time обновления через WebSocket
+    - Интеграция с Max Messenger API
+    - Система лидерборда
+    - Управление задачами
+  version: 1.0.0
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Локальный сервер разработки
+  - url: https://api.example.com/api/v1
+    description: Production сервер
+
+tags:
+  - name: auth
+    description: Аутентификация и авторизация
+  - name: users
+    description: Управление пользователями
+  - name: sessions
+    description: Управление сессиями фокуса
+  - name: tasks
+    description: Управление задачами
+  - name: messages
+    description: Сообщения в чате сессий
+  - name: leaderboard
+    description: Таблицы лидеров
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT токен полученный через /auth/login
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Сообщение об ошибке
+        code:
+          type: string
+          description: Код ошибки
+        message:
+          type: string
+          description: Детальное описание ошибки
+      required:
+        - error
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+
+    UserStats:
+      type: object
+      properties:
+        totalSessions:
+          type: integer
+        totalFocusTime:
+          type: integer
+          description: В минутах
+        currentStreak:
+          type: integer
+          description: В днях
+      required:
+        - totalSessions
+        - totalFocusTime
+        - currentStreak
+
+    UserProfile:
+      allOf:
+        - $ref: '#/components/schemas/User'
+        - type: object
+          properties:
+            stats:
+              $ref: '#/components/schemas/UserStats'
+
+    AuthRequest:
+      type: object
+      properties:
+        maxToken:
+          type: string
+          description: Токен из Max Messenger
+        deviceId:
+          type: string
+          description: Уникальный идентификатор устройства
+      required:
+        - maxToken
+        - deviceId
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+      required:
+        - user
+        - accessToken
+        - refreshToken
+
+    RefreshTokenRequest:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+      required:
+        - refreshToken
+
+    RefreshTokenResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+      required:
+        - accessToken
+
+    SessionMode:
+      type: string
+      enum:
+        - solo
+        - group
+
+    SessionStatus:
+      type: string
+      enum:
+        - pending
+        - active
+        - completed
+        - cancelled
+
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        completed:
+          type: boolean
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - completed
+
+    Participant:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+        userName:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+        isReady:
+          type: boolean
+        joinedAt:
+          type: string
+          format: date-time
+      required:
+        - userId
+        - userName
+        - isReady
+        - joinedAt
+
+    Session:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        mode:
+          $ref: '#/components/schemas/SessionMode'
+        status:
+          $ref: '#/components/schemas/SessionStatus'
+        tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+        focusDuration:
+          type: integer
+          description: В минутах
+        breakDuration:
+          type: integer
+          description: В минутах
+        groupName:
+          type: string
+          nullable: true
+        isPrivate:
+          type: boolean
+        creatorId:
+          type: string
+          format: uuid
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        participants:
+          type: array
+          items:
+            $ref: '#/components/schemas/Participant'
+        inviteLink:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - mode
+        - status
+        - tasks
+        - focusDuration
+        - breakDuration
+        - creatorId
+        - createdAt
+
+    CreateSessionRequest:
+      type: object
+      properties:
+        mode:
+          $ref: '#/components/schemas/SessionMode'
+        tasks:
+          type: array
+          items:
+            type: string
+          description: Список названий задач
+        focusDuration:
+          type: integer
+          minimum: 15
+          maximum: 60
+          description: В минутах
+        breakDuration:
+          type: integer
+          minimum: 5
+          maximum: 20
+          description: В минутах
+        groupName:
+          type: string
+          nullable: true
+          maxLength: 50
+        isPrivate:
+          type: boolean
+      required:
+        - mode
+        - tasks
+        - focusDuration
+        - breakDuration
+
+    UpdateTaskRequest:
+      type: object
+      properties:
+        completed:
+          type: boolean
+      required:
+        - completed
+
+    AddTaskRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+      required:
+        - title
+
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        userName:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+        text:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - userId
+        - userName
+        - text
+        - createdAt
+
+    SendMessageRequest:
+      type: object
+      properties:
+        text:
+          type: string
+          minLength: 1
+          maxLength: 4000
+      required:
+        - text
+
+    LeaderboardEntry:
+      type: object
+      properties:
+        rank:
+          type: integer
+        userId:
+          type: string
+          format: uuid
+        userName:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+        tasksCompleted:
+          type: integer
+        focusTime:
+          type: integer
+          description: В минутах
+        score:
+          type: integer
+      required:
+        - rank
+        - userId
+        - userName
+        - tasksCompleted
+        - focusTime
+        - score
+
+    SessionReport:
+      type: object
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+        tasksCompleted:
+          type: integer
+        tasksTotal:
+          type: integer
+        focusTime:
+          type: integer
+          description: В минутах
+        breakTime:
+          type: integer
+          description: В минутах
+        cyclesCompleted:
+          type: integer
+        participants:
+          type: array
+          items:
+            type: object
+            properties:
+              userId:
+                type: string
+              userName:
+                type: string
+              avatarUrl:
+                type: string
+                nullable: true
+              tasksCompleted:
+                type: integer
+              focusTime:
+                type: integer
+        completedAt:
+          type: string
+          format: date-time
+      required:
+        - sessionId
+        - tasksCompleted
+        - tasksTotal
+        - focusTime
+        - breakTime
+        - cyclesCompleted
+        - completedAt
+
+paths:
+  /auth/login:
+    post:
+      tags:
+        - auth
+      summary: Вход через Max token
+      description: Авторизация пользователя через Max Messenger token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+      responses:
+        '200':
+          description: Успешная авторизация
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Ошибка авторизации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/refresh:
+    post:
+      tags:
+        - auth
+      summary: Обновление access token
+      description: Получение нового access token используя refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Новый access token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshTokenResponse'
+        '401':
+          description: Невалидный refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/logout:
+    post:
+      tags:
+        - auth
+      summary: Выход из системы
+      description: Выход пользователя из системы и инвалидация токенов
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Успешный выход
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /users/me:
+    get:
+      tags:
+        - users
+      summary: Получить профиль текущего пользователя
+      description: Возвращает информацию о текущем пользователе и его статистику
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Профиль пользователя
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /users/contacts:
+    get:
+      tags:
+        - users
+      summary: Получить список контактов
+      description: Возвращает список контактов из Max Messenger для приглашений
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Список контактов
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  contacts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        avatarUrl:
+                          type: string
+                          nullable: true
+                        isRegistered:
+                          type: boolean
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions:
+    post:
+      tags:
+        - sessions
+      summary: Создать новую сессию
+      description: Создает новую сессию фокуса (solo или group)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSessionRequest'
+      responses:
+        '200':
+          description: Созданная сессия
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session:
+                    $ref: '#/components/schemas/Session'
+        '400':
+          description: Ошибка валидации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    get:
+      tags:
+        - sessions
+      summary: Получить историю сессий
+      description: Возвращает историю завершенных сессий пользователя
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 50
+      responses:
+        '200':
+          description: История сессий
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Session'
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                      limit:
+                        type: integer
+                      total:
+                        type: integer
+                      hasNext:
+                        type: boolean
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions/active:
+    get:
+      tags:
+        - sessions
+      summary: Получить активную сессию
+      description: Возвращает текущую активную сессию пользователя, если есть
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Активная сессия или null
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/Session'
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions/{sessionId}:
+    get:
+      tags:
+        - sessions
+      summary: Получить детали сессии
+      description: Возвращает подробную информацию о сессии
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Детали сессии
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session:
+                    $ref: '#/components/schemas/Session'
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Нет доступа к сессии
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Сессия не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions/{sessionId}/join:
+    post:
+      tags:
+        - sessions
+      summary: Присоединиться к сессии
+      description: Присоединяет пользователя к групповой сессии
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Успешно присоединился
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session:
+                    $ref: '#/components/schemas/Session'
+        '400':
+          description: Сессия уже началась или заполнена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions/{sessionId}/ready:
+    patch:
+      tags:
+        - sessions
+      summary: Отметить готовность
+      description: Отмечает готовность участника начать сессию
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                isReady:
+                  type: boolean
+              required:
+                - isReady
+      responses:
+        '200':
+          description: Готовность обновлена
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions/{sessionId}/start:
+    post:
+      tags:
+        - sessions
+      summary: Начать сессию
+      description: Начинает сессию (только создатель может начать)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Сессия начата
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      status:
+                        type: string
+                      startedAt:
+                        type: string
+                        format: date-time
+        '403':
+          description: Только создатель может начать сессию
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions/{sessionId}/complete:
+    post:
+      tags:
+        - sessions
+      summary: Завершить сессию
+      description: Завершает текущую сессию и генерирует отчет
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Отчет о сессии
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  report:
+                    $ref: '#/components/schemas/SessionReport'
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions/{sessionId}/tasks/{taskId}:
+    patch:
+      tags:
+        - tasks
+      summary: Обновить задачу
+      description: Обновляет статус задачи (выполнена/не выполнена)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTaskRequest'
+      responses:
+        '200':
+          description: Обновленная задача
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task:
+                    $ref: '#/components/schemas/Task'
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Задача не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags:
+        - tasks
+      summary: Удалить задачу
+      description: Удаляет задачу из сессии
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Задача удалена
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Задача не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions/{sessionId}/tasks:
+    post:
+      tags:
+        - tasks
+      summary: Добавить задачу
+      description: Добавляет новую задачу в активную сессию
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddTaskRequest'
+      responses:
+        '200':
+          description: Созданная задача
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task:
+                    $ref: '#/components/schemas/Task'
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions/{sessionId}/messages:
+    get:
+      tags:
+        - messages
+      summary: Получить сообщения из Max чата
+      description: |
+        Возвращает сообщения из чата Max API для данной сессии.
+        
+        **Важно:** Сообщения получаются напрямую из Max API, не из нашей БД.
+        Сообщения хранятся в Max, наша БД их не хранит.
+        
+        Этот endpoint можно использовать для отображения сообщений в кастомном UI,
+        но рекомендуется использовать Max SDK/Widget для отображения чата.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: before
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Получить сообщения до указанной даты (Unix timestamp в миллисекундах)
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+      responses:
+        '200':
+          description: Список сообщений из Max API
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  messages:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Message'
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Сессия не найдена или чат не создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      tags:
+        - messages
+      summary: Отправить сообщение в Max чат
+      description: |
+        Отправляет сообщение в чат Max API для данной сессии.
+        
+        **Важно:** Сообщение отправляется через Max API, не сохраняется в нашу БД.
+        Сообщения хранятся в Max.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendMessageRequest'
+      responses:
+        '200':
+          description: Отправленное сообщение из Max API
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    $ref: '#/components/schemas/Message'
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Сессия не найдена или чат не создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions/{sessionId}/chat:
+    get:
+      tags:
+        - sessions
+      summary: Получить информацию о Max чате
+      description: |
+        Возвращает информацию о чате Max для данной сессии.
+        Полезно для получения ссылки на чат или для интеграции с Max SDK.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Информация о чате
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  chatId:
+                    type: integer
+                    format: int64
+                    description: ID чата в Max API
+                  chatLink:
+                    type: string
+                    description: Ссылка на чат в Max
+                  title:
+                    type: string
+                    description: Название чата
+                  participantsCount:
+                    type: integer
+                    description: Количество участников
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Сессия не найдена или чат не создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions/{sessionId}/leaderboard:
+    get:
+      tags:
+        - leaderboard
+      summary: Получить лидерборд сессии
+      description: Возвращает таблицу лидеров для конкретной сессии
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Таблица лидеров
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  leaderboard:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LeaderboardEntry'
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /leaderboard/global:
+    get:
+      tags:
+        - leaderboard
+      summary: Получить глобальный лидерборд
+      description: Возвращает глобальную таблицу лидеров
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [day, week, month, all]
+            default: week
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+      responses:
+        '200':
+          description: Глобальная таблица лидеров
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  leaderboard:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LeaderboardEntry'
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
