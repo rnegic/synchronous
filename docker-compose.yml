@@ -61,12 +61,24 @@ services:
       retries: 3
       start_period: 40s
 
+  swagger-ui:
+    image: swaggerapi/swagger-ui:latest
+    container_name: synchronous_swagger_ui
+    environment:
+      - SWAGGER_JSON=/swagger.yaml
+      - BASE_URL=/swagger
+    volumes:
+      - ./backend/swagger.yaml:/swagger.yaml:ro
+    networks:
+      - synchronous_network
+
   nginx:
     image: nginx:alpine
     container_name: synchronous_nginx
     depends_on:
       - backend
       - frontend
+      - swagger-ui
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
