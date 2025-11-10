@@ -29,8 +29,11 @@ COPY --from=builder /app/configs ./configs
 # Copy migrations
 COPY --from=builder /app/migrations ./migrations
 
-# Copy docs (for swagger)
-COPY --from=builder /app/docs ./docs
+# Copy swagger.yaml (если существует)
+RUN --mount=from=builder,source=/app,target=/tmp/app \
+    if [ -f /tmp/app/swagger.yaml ]; then \
+        cp /tmp/app/swagger.yaml ./swagger.yaml; \
+    fi || true
 
 EXPOSE 8080
 
