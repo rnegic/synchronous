@@ -46,6 +46,10 @@ func (c *Config) Load(filePath string) error {
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 
+	// Читаем переменные окружения напрямую (для Docker)
+	viper.BindEnv("DB_DSN")
+	viper.BindEnv("DATABASE.DSN", "DB_DSN")
+
 	err := viper.ReadInConfig()
 	if err != nil {
 		return fmt.Errorf("failed to read config file: %v", err)
@@ -99,6 +103,11 @@ func (c *Config) Load(filePath string) error {
 	}
 	if viper.IsSet("APP.MAX_SESSION_SIZE") {
 		c.App.MaxSessionSize = viper.GetInt("APP.MAX_SESSION_SIZE")
+	}
+
+	// Проверяем переменную окружения DB_DSN (приоритет над config.toml)
+	if envDSN := viper.GetString("DB_DSN"); envDSN != "" {
+		c.Database.DSN = envDSN
 	}
 
 	// Строим DSN из отдельных параметров, если DSN не указан
