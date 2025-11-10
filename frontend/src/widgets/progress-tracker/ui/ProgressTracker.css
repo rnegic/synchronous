@@ -1,0 +1,73 @@
+.progress-tracker {
+  width: 100%;
+  padding: var(--spacing-lg);
+  background: var(--color-background);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-lg);
+}
+
+.progress-tracker__content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.progress-tracker__info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.progress-tracker__label {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.progress-tracker__count {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+  padding: var(--spacing-xs) var(--spacing-md);
+  background: var(--color-lavender);
+  border-radius: var(--radius-full);
+}
+
+.progress-tracker__bar {
+  margin: 0 !important;
+}
+
+.progress-tracker__bar .ant-progress-bg {
+  border-radius: var(--radius-full);
+}
+
+.progress-tracker__participants {
+  display: flex;
+  align-items: center;
+}
+
+.progress-tracker__participants .ant-avatar {
+  border: 2px solid var(--color-background);
+  box-shadow: var(--shadow-sm);
+}
+
+.progress-tracker__participants .ant-avatar-group {
+  display: flex;
+  align-items: center;
+}
+
+@media (max-width: 600px) {
+  .progress-tracker {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .progress-tracker__participants {
+    justify-content: flex-end;
+  }
+}

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Typography, List, Empty, Flex, Button } from 'antd';
 import { useNavigate } from 'react-router';
 import { RocketOutlined } from '@ant-design/icons';
-import { OnboardingCarousel, SessionCard, Header } from '@/shared/ui';
+import { OnboardingCarousel, SessionCard } from '@/shared/ui';
 import { onboardingSteps, mockSessions } from '@/shared/lib/mockData';
 import './styles.css';
 
@@ -22,12 +22,6 @@ export function HomePage() {
 
   return (
     <>
-      <Header
-        variant="home"
-        userName="Давид"
-        avatarUrl="https://i.pravatar.cc/150?img=1"
-      />
-
       <div className="home-page">
         <section className="home-page__section">
           <Title level={2} className="home-page__section-title">

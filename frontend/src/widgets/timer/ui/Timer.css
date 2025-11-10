@@ -1,0 +1,102 @@
+.timer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-xl);
+  padding: var(--spacing-xl) 0;
+}
+
+.timer__phase-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.timer__phase-label {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  padding: var(--spacing-xs) var(--spacing-lg);
+  border-radius: var(--radius-full);
+  background: var(--color-background-soft);
+  transition: all var(--transition-base);
+}
+
+.timer__phase-label--focus {
+  background: var(--color-lavender);
+  color: var(--color-primary);
+}
+
+.timer__phase-label--break {
+  background: var(--color-mint);
+  color: var(--color-bright-sage);
+}
+
+.timer__cycle {
+  font-size: var(--font-size-md);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+.timer__circle {
+  position: relative;
+}
+
+.timer__time {
+  font-size: 64px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -2px;
+}
+
+.timer__controls {
+  display: flex;
+  gap: var(--spacing-md);
+  width: 100%;
+  max-width: 400px;
+  padding: 0 var(--spacing-md);
+}
+
+.timer__btn-pause {
+  flex: 2;
+  height: 56px !important;
+  border-radius: var(--radius-lg) !important;
+  font-size: var(--font-size-lg) !important;
+  font-weight: var(--font-weight-semibold) !important;
+  background: var(--color-primary) !important;
+  color: white !important;
+  border: none !important;
+  box-shadow: var(--shadow-md);
+  transition: all var(--transition-base);
+}
+
+.timer__btn-pause:hover {
+  background: var(--color-info) !important;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.timer__btn-stop {
+  flex: 1;
+  height: 56px !important;
+  border-radius: var(--radius-lg) !important;
+  font-size: var(--font-size-lg) !important;
+  font-weight: var(--font-weight-semibold) !important;
+  box-shadow: var(--shadow-md);
+  transition: all var(--transition-base);
+}
+
+.timer__btn-stop:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.timer__circle .ant-progress-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.timer__circle .ant-progress-inner {
+  box-shadow: var(--shadow-sm);
+}
