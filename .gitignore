@@ -2,3 +2,5 @@
 docs/
 nginx/
 deploy/
+
+.env
