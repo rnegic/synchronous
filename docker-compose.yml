@@ -65,7 +65,7 @@ services:
     image: swaggerapi/swagger-ui:latest
     container_name: synchronous_swagger_ui
     environment:
-      - SWAGGER_JSON_URL=http://backend:8080/swagger.yaml
+      - SWAGGER_JSON_URL=/swagger.yaml
     networks:
       - synchronous_network
 
