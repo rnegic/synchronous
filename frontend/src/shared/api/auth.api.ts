@@ -18,19 +18,19 @@ import type {
 // ============================================================================
 
 /**
- * Login with Max Messenger token
+ * Login with MAX initData
  * Backend will set http-only cookies for access and refresh tokens
  * 
- * @param maxToken - Max Messenger access token
+ * @param initData - MAX Bridge initData string (validated by backend)
  * @param deviceId - Unique device identifier
  * @returns User profile data (tokens are in cookies)
  */
 export const login = async (
-  maxToken: string,
+  initData: string,
   deviceId: string
 ): Promise<LoginResponse> => {
   const payload: LoginRequest = {
-    maxToken,
+    initData,
     deviceId,
   };
 

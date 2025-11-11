@@ -28,7 +28,7 @@ interface AuthState {
 }
 
 interface LoginPayload {
-  maxToken: string;
+  initData: string; // MAX Bridge initData
   deviceId: string;
 }
 
@@ -48,14 +48,14 @@ const initialState: AuthState = {
 // ============================================================================
 
 /**
- * Login with Max Messenger token
+ * Login with MAX initData
  * Backend sets http-only cookies for auth tokens
  */
 export const loginThunk = createAsyncThunk(
   'auth/login',
   async (payload: LoginPayload, { rejectWithValue }) => {
     try {
-      const response = await authApi.login(payload.maxToken, payload.deviceId);
+      const response = await authApi.login(payload.initData, payload.deviceId);
       return response.user;
     } catch (error) {
       return rejectWithValue(getErrorMessage(error));

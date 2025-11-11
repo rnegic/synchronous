@@ -13,6 +13,7 @@ import {
   TrophyOutlined 
 } from '@ant-design/icons';
 import { useAuth } from '@/app/store';
+import { useMaxWebApp } from '@/shared/hooks/useMaxWebApp';
 import styles from './Onboarding.module.css';
 
 const { Title, Paragraph } = Typography;
@@ -37,7 +38,15 @@ const Feature: React.FC<FeatureProps> = ({ icon, title, description }) => (
 export function OnboardingPage() {
   const navigate = useNavigate();
   const { isAuthenticated, isLoading, login, error } = useAuth();
+  const { initData, user, isReady } = useMaxWebApp();
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+
+  // Auto-login if MAX initData is available
+  useEffect(() => {
+    if (isReady && !isAuthenticated && !isAuthenticating && initData && user) {
+      handleMaxAuth();
+    }
+  }, [isReady, isAuthenticated, initData, user]);
 
   // Redirect to home if already authenticated
   useEffect(() => {
@@ -48,18 +57,19 @@ export function OnboardingPage() {
 
   /**
    * Handle Max Messenger authentication
-   * In production, this will integrate with Max SDK
+   * Uses MAX Bridge initData for secure authentication
    */
   const handleMaxAuth = async () => {
+    if (!initData) {
+      message.error('MAX initData не найден. Откройте приложение через MAX Messenger.');
+      return;
+    }
+
     setIsAuthenticating(true);
     
     try {
-      // TODO: Replace with actual Max Messenger SDK integration
-      // For now, we'll use mock data for development
-      const mockMaxToken = 'dev_max_token_' + Date.now();
-      const deviceId = navigator.userAgent; // Use user agent as device ID for now
-
-      await login(mockMaxToken, deviceId);
+      const deviceId = navigator.userAgent;
+      await login(initData, deviceId);
       
       message.success('Вход выполнен успешно!');
       navigate('/', { replace: true });

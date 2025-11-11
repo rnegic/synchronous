@@ -147,8 +147,12 @@ export type LeaderboardPeriod = 'day' | 'week' | 'month' | 'all';
 // Request Types
 // ============================================================================
 
+/**
+ * Login request with MAX initData
+ * initData is provided by MAX Bridge and contains validated user info
+ */
 export interface LoginRequest {
-  maxToken: string;
+  initData: string; // MAX Bridge initData string for validation
   deviceId: string;
 }
 

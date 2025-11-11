@@ -32,8 +32,8 @@ export const useAuth = () => {
   const auth = useSelector(selectAuth);
 
   const login = useCallback(
-    (maxToken: string, deviceId: string) => {
-      return dispatch(loginThunk({ maxToken, deviceId }));
+    (initData: string, deviceId: string) => {
+      return dispatch(loginThunk({ initData, deviceId }));
     },
     [dispatch]
   );
