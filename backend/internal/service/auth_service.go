@@ -1,7 +1,13 @@
 package service
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"net/url"
+	"sort"
 	"strings"
 	"time"
 
@@ -13,47 +19,59 @@ import (
 
 type AuthService struct {
 	userRepo     interfaces.UserRepository
-	maxAPISvc    interfaces.MaxAPIService
 	tokenManager *jwt.TokenManager
+	botToken     string
 }
 
 func NewAuthService(
 	userRepo interfaces.UserRepository,
-	maxAPISvc interfaces.MaxAPIService,
 	tokenManager *jwt.TokenManager,
+	botToken string,
 ) interfaces.AuthService {
 	return &AuthService{
 		userRepo:     userRepo,
-		maxAPISvc:    maxAPISvc,
 		tokenManager: tokenManager,
+		botToken:     botToken,
 	}
 }
 
-func (s *AuthService) Login(maxToken, deviceID string) (*entity.AuthTokens, *entity.User, error) {
-	profile, err := s.maxAPISvc.GetProfileByToken(maxToken)
+func (s *AuthService) Login(initData, deviceID string) (*entity.AuthTokens, *entity.User, error) {
+	_ = deviceID
+
+	payload, err := validateInitData(initData, s.botToken)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to validate max token: %w", err)
+		return nil, nil, fmt.Errorf("failed to validate init data: %w", err)
 	}
 
-	if profile == nil || profile.UserID == 0 {
-		return nil, nil, fmt.Errorf("invalid max token: missing profile information")
+	userJSON, ok := payload["user"]
+	if !ok || strings.TrimSpace(userJSON) == "" {
+		return nil, nil, fmt.Errorf("init data missing user payload")
 	}
 
-	displayName := strings.TrimSpace(fmt.Sprintf("%s %s", profile.FirstName, profile.LastName))
+	var initUser maxInitDataUser
+	if err := json.Unmarshal([]byte(userJSON), &initUser); err != nil {
+		return nil, nil, fmt.Errorf("failed to parse user payload: %w", err)
+	}
+
+	if initUser.ID == 0 {
+		return nil, nil, fmt.Errorf("init data missing user id")
+	}
+
+	displayName := strings.TrimSpace(fmt.Sprintf("%s %s", initUser.FirstName, initUser.LastName))
 	if displayName == "" {
-		displayName = strings.TrimSpace(profile.Name)
+		displayName = strings.TrimSpace(initUser.Username)
 	}
 	if displayName == "" {
-		displayName = fmt.Sprintf("user-%d", profile.UserID)
+		displayName = fmt.Sprintf("user-%d", initUser.ID)
 	}
 
 	var avatarURL *string
-	if strings.TrimSpace(profile.AvatarURL) != "" {
-		avatar := strings.TrimSpace(profile.AvatarURL)
+	if strings.TrimSpace(initUser.PhotoURL) != "" {
+		avatar := strings.TrimSpace(initUser.PhotoURL)
 		avatarURL = &avatar
 	}
 
-	user, err := s.userRepo.GetByMaxUserID(profile.UserID)
+	user, err := s.userRepo.GetByMaxUserID(initUser.ID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get user: %w", err)
 	}
@@ -65,7 +83,7 @@ func (s *AuthService) Login(maxToken, deviceID string) (*entity.AuthTokens, *ent
 			ID:        uuid.New().String(),
 			Name:      displayName,
 			AvatarURL: avatarURL,
-			MaxUserID: profile.UserID,
+			MaxUserID: initUser.ID,
 			CreatedAt: now,
 			UpdatedAt: now,
 		}
@@ -114,6 +132,72 @@ func (s *AuthService) Login(maxToken, deviceID string) (*entity.AuthTokens, *ent
 	}
 
 	return tokens, user, nil
+}
+
+type maxInitDataUser struct {
+	ID        int64  `json:"id"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+	Username  string `json:"username"`
+	PhotoURL  string `json:"photo_url"`
+}
+
+func validateInitData(initData, botToken string) (map[string]string, error) {
+	if strings.TrimSpace(initData) == "" {
+		return nil, fmt.Errorf("init data is empty")
+	}
+
+	if strings.TrimSpace(botToken) == "" {
+		return nil, fmt.Errorf("bot token is not configured")
+	}
+
+	values, err := url.ParseQuery(initData)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse init data: %w", err)
+	}
+
+	hash := values.Get("hash")
+	if strings.TrimSpace(hash) == "" {
+		return nil, fmt.Errorf("init data missing hash")
+	}
+	values.Del("hash")
+
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	var sb strings.Builder
+	for i, key := range keys {
+		sb.WriteString(key)
+		sb.WriteByte('=')
+		sb.WriteString(values.Get(key))
+		if i < len(keys)-1 {
+			sb.WriteByte('\n')
+		}
+	}
+
+	secretKey := sha256.Sum256([]byte(botToken))
+	mac := hmac.New(sha256.New, secretKey[:])
+	mac.Write([]byte(sb.String()))
+	expectedHash := mac.Sum(nil)
+
+	providedHash, err := hex.DecodeString(hash)
+	if err != nil {
+		return nil, fmt.Errorf("invalid hash format: %w", err)
+	}
+
+	if !hmac.Equal(expectedHash, providedHash) {
+		return nil, fmt.Errorf("init data hash mismatch")
+	}
+
+	result := make(map[string]string, len(keys))
+	for _, key := range keys {
+		result[key] = values.Get(key)
+	}
+
+	return result, nil
 }
 
 func (s *AuthService) RefreshToken(refreshToken string) (*entity.AuthTokens, error) {

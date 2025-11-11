@@ -1,6 +1,6 @@
 /**
  * API Client Configuration
- * 
+ *
  * - Base URL points to production API
  * - Credentials included for http-only cookies (secure token storage)
  * - Automatic 401 handling (backend refreshes tokens via cookies)
@@ -25,7 +25,7 @@ declare module 'axios' {
 // Constants
 // ============================================================================
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://focus-sync.ru/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://focus-sync.ru/api/v1';
 const REQUEST_TIMEOUT = 30000; // 30 seconds
 
 // ============================================================================
@@ -34,7 +34,7 @@ const REQUEST_TIMEOUT = 30000; // 30 seconds
 
 /**
  * Main API client with http-only cookie authentication
- * 
+ *
  * SECURITY:
  * - Tokens are stored in http-only cookies by backend
  * - Cookies are automatically sent with every request

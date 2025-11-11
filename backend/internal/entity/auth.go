@@ -9,6 +9,6 @@ type AuthTokens struct {
 }
 
 type MaxAuthRequest struct {
-	MaxToken string `json:"maxToken"`
+	InitData string `json:"initData"`
 	DeviceID string `json:"deviceId"`
 }

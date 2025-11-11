@@ -23,6 +23,7 @@ type Config struct {
 	MaxAPI struct {
 		BaseURL     string
 		AccessToken string
+		BotToken    string
 	}
 	App struct {
 		JWTSecret      string
@@ -49,6 +50,7 @@ func (c *Config) Load(filePath string) error {
 	// Читаем переменные окружения напрямую (для Docker)
 	viper.BindEnv("DB_DSN")
 	viper.BindEnv("DATABASE.DSN", "DB_DSN")
+	viper.BindEnv("MAXAPI.BOT_TOKEN", "BOT_TOKEN")
 
 	err := viper.ReadInConfig()
 	if err != nil {
@@ -88,6 +90,9 @@ func (c *Config) Load(filePath string) error {
 	}
 	if viper.IsSet("MAXAPI.ACCESS_TOKEN") {
 		c.MaxAPI.AccessToken = viper.GetString("MAXAPI.ACCESS_TOKEN")
+	}
+	if viper.IsSet("MAXAPI.BOT_TOKEN") {
+		c.MaxAPI.BotToken = viper.GetString("MAXAPI.BOT_TOKEN")
 	}
 	if viper.IsSet("APP.JWT_SECRET") {
 		c.App.JWTSecret = viper.GetString("APP.JWT_SECRET")

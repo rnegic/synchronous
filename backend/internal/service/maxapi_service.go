@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/rnegic/synchronous/internal/interfaces"
 	"github.com/rnegic/synchronous/pkg/maxapi"
@@ -13,8 +14,13 @@ type MaxAPIService struct {
 }
 
 func NewMaxAPIService(baseURL, accessToken string) interfaces.MaxAPIService {
+	client, err := maxapi.NewClient(baseURL, accessToken)
+	if err != nil {
+		log.Fatalf("failed to initialize Max API client: %v", err)
+	}
+
 	return &MaxAPIService{
-		client:  maxapi.NewClient(baseURL, accessToken),
+		client:  client,
 		baseURL: baseURL,
 	}
 }
@@ -24,7 +30,11 @@ func (s *MaxAPIService) GetBotInfo() (*maxapi.BotInfo, error) {
 }
 
 func (s *MaxAPIService) GetProfileByToken(accessToken string) (*maxapi.BotInfo, error) {
-	dynamicClient := maxapi.NewClient(s.baseURL, accessToken)
+	dynamicClient, err := maxapi.NewClient(s.baseURL, accessToken)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Max API client: %w", err)
+	}
+
 	return dynamicClient.GetMyInfo()
 }
 

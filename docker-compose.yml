@@ -81,6 +81,7 @@ services:
       - swagger-ui
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/certbot:/var/www/certbot
       - /etc/letsencrypt:/etc/letsencrypt:ro
     ports:
       - "80:80"

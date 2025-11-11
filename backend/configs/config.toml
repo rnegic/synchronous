@@ -13,6 +13,7 @@ DB_NAME=""
 [MAXAPI]
 BASE_URL="https://platform-api.max.ru"
 ACCESS_TOKEN=""
+BOT_TOKEN=""
 
 [APP]
 JWT_SECRET="your-secret-key-change-in-production"
