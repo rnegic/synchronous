@@ -73,7 +73,7 @@ func (a *App) Run() error {
 	)
 
 	// Инициализация сервисов
-	authService := service.NewAuthService(userRepo, maxAPIService, tokenManager)
+	authService := service.NewAuthService(userRepo, tokenManager, cfg.MaxAPI.BotToken)
 	userService := service.NewUserService(userRepo)
 	sessionService := service.NewSessionService(sessionRepo, taskRepo, userRepo, maxAPIService)
 	messageService := service.NewMessageService(sessionService, maxAPIService, userRepo, messageRepo)

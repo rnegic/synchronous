@@ -39,7 +39,7 @@ func (h *AuthHandler) login(c *gin.Context) {
 		return
 	}
 
-	tokens, user, err := h.authService.Login(req.MaxToken, req.DeviceID)
+	tokens, user, err := h.authService.Login(req.InitData, req.DeviceID)
 	if err != nil {
 		h.ErrorResponse(c, http.StatusUnauthorized, err.Error())
 		return

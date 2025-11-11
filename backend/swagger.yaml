@@ -111,12 +111,12 @@ components:
     AuthRequest:
       type: object
       properties:
-        maxToken:
+        initData:
           type: string
           description: |
-            Пользовательский access_token, полученный от Max (mini-app bridge или OAuth flow).
-            Именно этот токен фронтенд передаёт на backend для авторизации.
-          example: "001.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+            URL-encoded строка инициализации MAX mini-app (query_id, user, auth_date, hash).
+            Должна передаваться в точном виде, как получено от MAX Bridge.
+          example: "query_id=AAH123&user=%7B%22id%22%3A123%2C%22first_name%22%3A%22Ivan%22%7D&auth_date=1712147200&hash=b1a2c3"
         deviceId:
           type: string
           description: |
@@ -124,7 +124,7 @@ components:
             Используется для трекинга сессий и отзывов refresh токенов.
           example: "device-f5e3b94a-5e1b-4a16-9a3f-0db8741c4f19"
       required:
-        - maxToken
+        - initData
         - deviceId
 
     AuthResponse:
@@ -428,10 +428,10 @@ paths:
     post:
       tags:
         - auth
-      summary: Вход через Max token
+      summary: Вход через MAX initData
       description: |
-        Авторизация пользователя через Max Messenger token.
-        `maxToken` — это пользовательский access_token, который фронтенд получает от Max (mini-app bridge или OAuth flow).
+        Авторизация пользователя через MAX Bridge `initData`.
+        `initData` содержит URL-encoded параметры (query_id, user, auth_date, hash), полученные на фронтенде из MAX WebApp.
         Токены устанавливаются в HTTP-only cookies для защиты от XSS атак.
       requestBody:
         required: true
