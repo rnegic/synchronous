@@ -1,4 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
+import authReducer from './slices/authSlice';
 import sessionSetupReducer from '@/entities/session/model/sessionSetupSlice';
 import activeSessionReducer from '@/entities/session/model/activeSessionSlice';
 
@@ -8,6 +9,7 @@ import activeSessionReducer from '@/entities/session/model/activeSessionSlice';
  */
 export const store = configureStore({
   reducer: {
+    auth: authReducer,
     sessionSetup: sessionSetupReducer,
     activeSession: activeSessionReducer,
   },
@@ -21,3 +23,6 @@ export const store = configureStore({
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
+
+// Export hooks
+export * from './hooks';

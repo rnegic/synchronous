@@ -12,6 +12,7 @@
   "dependencies": {
     "@reduxjs/toolkit": "^2.10.1",
     "antd": "^5.28.0",
+    "axios": "^1.13.2",
     "clsx": "^2.1.1",
     "dayjs": "^1.11.19",
     "react": "^19.1.1",
