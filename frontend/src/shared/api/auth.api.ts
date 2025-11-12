@@ -7,6 +7,7 @@
  */
 
 import { apiClient } from './client';
+import axios from 'axios';
 import type {
   LoginRequest,
   LoginResponse,
@@ -31,7 +32,7 @@ export const login = async (
 ): Promise<LoginResponse> => {
   console.log('[Auth API] 📤 Sending login request', {
     initDataLength: initData.length,
-    initDataPreview: initData.substring(0, 100) + '...',
+    initDataFull: initData, // 🔍 ПОЛНЫЙ initData для анализа
     deviceIdPreview: deviceId.substring(0, 50),
   });
 
@@ -53,6 +54,17 @@ export const login = async (
     return response.data;
   } catch (error) {
     console.error('[Auth API] ❌ Login failed', error);
+    
+    // Log detailed error information
+    if (axios.isAxiosError(error)) {
+      console.error('[Auth API] Error details:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        headers: error.response?.headers,
+      });
+    }
+    
     throw error;
   }
 };

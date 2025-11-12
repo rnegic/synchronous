@@ -15,9 +15,14 @@ function App() {
   const { login, isAuthenticated, isLoading: authLoading } = useAuth();
   const { initData, user, isReady } = useMaxWebApp();
   const [isInitializing, setIsInitializing] = useState(true);
+  const [loginAttempted, setLoginAttempted] = useState(false);
 
   // Automatic login when MAX initData is available
   useEffect(() => {
+    // Prevent duplicate login attempts
+    if (loginAttempted) {
+      return;
+    }
     const performAutoLogin = async () => {
       console.log('[App] 🔍 performAutoLogin started', {
         isReady,
@@ -55,6 +60,7 @@ function App() {
           initDataLength: initData.length,
         });
         
+        setLoginAttempted(true); // Mark that we attempted login
         const deviceId = navigator.userAgent;
         const result = await login(initData, deviceId);
         
@@ -73,7 +79,7 @@ function App() {
     };
 
     performAutoLogin();
-  }, [isReady, initData, user, isAuthenticated, login]);
+  }, [isReady, initData, user, isAuthenticated, login, loginAttempted]);
 
   // Show loading spinner during initialization
   if (isInitializing || authLoading) {
