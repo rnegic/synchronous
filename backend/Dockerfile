@@ -7,6 +7,9 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
+# Install goose for migrations
+RUN go install github.com/pressly/goose/v3/cmd/goose@latest
+
 # Copy source code
 COPY . .
 
@@ -23,11 +26,18 @@ WORKDIR /root/
 # Copy the binary from builder
 COPY --from=builder /app/app .
 
+# Copy goose binary from builder
+COPY --from=builder /go/bin/goose /usr/local/bin/goose
+
 # Copy configs
 COPY --from=builder /app/configs ./configs
 
 # Copy migrations
 COPY --from=builder /app/migrations ./migrations
+
+# Copy migration script
+COPY --from=builder /app/scripts ./scripts
+RUN chmod +x ./scripts/migrate.sh
 
 # Copy swagger.yaml (если существует в корне backend)
 RUN --mount=from=builder,source=/app,target=/tmp/app \
