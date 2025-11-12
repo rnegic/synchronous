@@ -151,7 +151,13 @@ func validateInitData(initData, botToken string) (map[string]string, error) {
 		return nil, fmt.Errorf("bot token is not configured")
 	}
 
-	values, err := url.ParseQuery(initData)
+	// URL-decode initData if needed
+	decodedInitData, err := url.QueryUnescape(initData)
+	if err != nil {
+		decodedInitData = initData
+	}
+
+	values, err := url.ParseQuery(decodedInitData)
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse init data: %w", err)
 	}
@@ -177,10 +183,16 @@ func validateInitData(initData, botToken string) (map[string]string, error) {
 			sb.WriteByte('\n')
 		}
 	}
+	dataCheckString := sb.String()
 
-	secretKey := sha256.Sum256([]byte(botToken))
-	mac := hmac.New(sha256.New, secretKey[:])
-	mac.Write([]byte(sb.String()))
+	// 1. Создаем secret_key = HMAC_SHA256("WebAppData", botToken)
+	secretKeyMac := hmac.New(sha256.New, []byte("WebAppData"))
+	secretKeyMac.Write([]byte(botToken))
+	secretKey := secretKeyMac.Sum(nil)
+
+	// 2. Вычисляем hash = HMAC_SHA256(secret_key, data_check_string)
+	mac := hmac.New(sha256.New, secretKey)
+	mac.Write([]byte(dataCheckString))
 	expectedHash := mac.Sum(nil)
 
 	providedHash, err := hex.DecodeString(hash)

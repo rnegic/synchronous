@@ -40,17 +40,20 @@ export function OnboardingPage() {
   const { isAuthenticated, isLoading, login, error } = useAuth();
   const { initData, user, isReady } = useMaxWebApp();
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [hasAttemptedLogin, setHasAttemptedLogin] = useState(false);
 
-  // Auto-login if MAX initData is available
+  // Auto-login if MAX initData is available (only once)
   useEffect(() => {
-    if (isReady && !isAuthenticated && !isAuthenticating && initData && user) {
+    if (isReady && !isAuthenticated && !isAuthenticating && !hasAttemptedLogin && initData && user) {
+      console.log('[Onboarding] initData available, starting auto-login', { user });
       handleMaxAuth();
     }
-  }, [isReady, isAuthenticated, initData, user]);
+  }, [isReady, isAuthenticated, initData, user, isAuthenticating, hasAttemptedLogin]);
 
   // Redirect to home if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
+      console.log('[Onboarding] User authenticated, redirecting to home');
       navigate('/', { replace: true });
     }
   }, [isAuthenticated, navigate]);
@@ -66,15 +69,20 @@ export function OnboardingPage() {
     }
 
     setIsAuthenticating(true);
+    setHasAttemptedLogin(true);
     
     try {
+      console.log('[Onboarding] Sending login request with initData');
       const deviceId = navigator.userAgent;
       await login(initData, deviceId);
       
+      console.log('[Onboarding] Login successful');
       message.success('Вход выполнен успешно!');
       navigate('/', { replace: true });
     } catch (err) {
+      console.error('[Onboarding] Login failed:', err);
       message.error(error || 'Ошибка входа. Попробуйте снова.');
+      setHasAttemptedLogin(false); // Allow retry
     } finally {
       setIsAuthenticating(false);
     }
