@@ -91,8 +91,9 @@ func (c *Config) Load(filePath string) error {
 	if viper.IsSet("MAXAPI.ACCESS_TOKEN") {
 		c.MaxAPI.AccessToken = viper.GetString("MAXAPI.ACCESS_TOKEN")
 	}
-	if viper.IsSet("MAXAPI.BOT_TOKEN") {
-		c.MaxAPI.BotToken = viper.GetString("MAXAPI.BOT_TOKEN")
+	// Читаем BOT_TOKEN из конфига (будет перезаписан переменной окружения, если она есть)
+	if botToken := viper.GetString("MAXAPI.BOT_TOKEN"); botToken != "" {
+		c.MaxAPI.BotToken = botToken
 	}
 	if viper.IsSet("APP.JWT_SECRET") {
 		c.App.JWTSecret = viper.GetString("APP.JWT_SECRET")
@@ -113,6 +114,11 @@ func (c *Config) Load(filePath string) error {
 	// Проверяем переменную окружения DB_DSN (приоритет над config.toml)
 	if envDSN := viper.GetString("DB_DSN"); envDSN != "" {
 		c.Database.DSN = envDSN
+	}
+
+	// Проверяем переменную окружения BOT_TOKEN (приоритет над config.toml)
+	if envBotToken := viper.GetString("BOT_TOKEN"); envBotToken != "" {
+		c.MaxAPI.BotToken = envBotToken
 	}
 
 	// Строим DSN из отдельных параметров, если DSN не указан

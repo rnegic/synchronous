@@ -73,7 +73,13 @@ func (a *App) Run() error {
 	)
 
 	// Инициализация сервисов
-	authService := service.NewAuthService(userRepo, tokenManager, cfg.MaxAPI.BotToken)
+	botToken := cfg.MaxAPI.BotToken
+	if botToken == "" {
+		log.Printf("[Config] ⚠️ WARNING: BOT_TOKEN is not configured! InitData validation will fail.")
+	} else {
+		log.Printf("[Config] ✅ BOT_TOKEN loaded (length: %d)", len(botToken))
+	}
+	authService := service.NewAuthService(userRepo, tokenManager, botToken)
 	userService := service.NewUserService(userRepo)
 	sessionService := service.NewSessionService(sessionRepo, taskRepo, userRepo, maxAPIService)
 	messageService := service.NewMessageService(sessionService, maxAPIService, userRepo, messageRepo)
