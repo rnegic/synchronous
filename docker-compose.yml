@@ -65,7 +65,7 @@ services:
     image: swaggerapi/swagger-ui:v5.17.14
     container_name: synchronous_swagger_ui
     environment:
-      - SWAGGER_JSON_URL=/swagger.yaml
+      - SWAGGER_JSON_URL=https://focus-sync.ru/swagger.yaml
       - BASE_URL=/swagger
     ports:
       - "8081:8080"

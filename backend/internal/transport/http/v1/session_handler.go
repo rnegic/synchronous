@@ -163,8 +163,6 @@ func (h *SessionHandler) getHistory(c *gin.Context) {
 	})
 }
 
-	});
-}
 
 // getPublicSessions возвращает список публичных сессий
 func (h *SessionHandler) getPublicSessions(c *gin.Context) {
