@@ -113,18 +113,17 @@ export function FocusSessionPage() {
     if (isCompleted && sessionId) {
       message.success('Сессия завершена! Отличная работа! 🎉');
       
-      // Complete session on backend if in MAX environment
-      if (isMaxEnvironment) {
-        sessionsApi.completeSession(sessionId).catch(error => {
-          console.error('[FocusSession] Failed to complete session:', error);
-        });
-      }
+      // Complete session on backend
+      sessionsApi.completeSession(sessionId).catch(error => {
+        console.error('[FocusSession] Failed to complete session:', error);
+        // Continue to report even if API fails
+      });
       
       setTimeout(() => {
         navigate(`/session-report/${sessionId}`);
       }, 1000);
     }
-  }, [isCompleted, sessionId, navigate, isMaxEnvironment]);
+  }, [isCompleted, sessionId, navigate]);
   
   // Redirect to home if no session data
   if (!sessionId && setupTasks.length === 0) {

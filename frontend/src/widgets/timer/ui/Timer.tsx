@@ -10,10 +10,10 @@ import {
   selectCurrentCycle,
 } from '@/entities/session/model/activeSessionSelectors';
 import {
-  togglePause,
   tick,
   switchPhase,
   completeSession,
+  togglePauseAsync,
 } from '@/entities/session/model/activeSessionSlice';
 import './Timer.css';
 
@@ -45,7 +45,7 @@ export const Timer = () => {
   }, [progress, isRunning, dispatch]);
   
   const handleTogglePause = () => {
-    dispatch(togglePause());
+    dispatch(togglePauseAsync());
   };
   
   const handleStop = () => {

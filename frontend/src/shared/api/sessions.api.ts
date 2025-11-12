@@ -122,6 +122,22 @@ export const startSession = async (
 };
 
 /**
+ * Pause active session
+ * @param sessionId - Session UUID
+ */
+export const pauseSession = async (sessionId: string): Promise<void> => {
+  await apiClient.post(`/sessions/${sessionId}/pause`);
+};
+
+/**
+ * Resume paused session
+ * @param sessionId - Session UUID
+ */
+export const resumeSession = async (sessionId: string): Promise<void> => {
+  await apiClient.post(`/sessions/${sessionId}/resume`);
+};
+
+/**
  * Complete session and generate report
  * @param sessionId - Session UUID
  * @returns Session completion report

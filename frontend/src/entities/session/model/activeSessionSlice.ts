@@ -1,6 +1,7 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
 import type { Task, User } from '@/shared/types';
+import { sessionsApi } from '@/shared/api';
 
 export type SessionPhase = 'focus' | 'break';
 export type SessionStatus = 'running' | 'paused' | 'completed';
@@ -41,6 +42,39 @@ const initialState: ActiveSessionState = {
   tasks: [],
   participants: [],
 };
+
+// ============================================================================
+// Async Thunks
+// ============================================================================
+
+/**
+ * Toggle pause/resume with backend sync
+ */
+export const togglePauseAsync = createAsyncThunk<
+  void,
+  void,
+  { state: { activeSession: ActiveSessionState } }
+>(
+  'activeSession/togglePauseAsync',
+  async (_, { getState }) => {
+    const { sessionId, status } = getState().activeSession;
+    
+    if (!sessionId) {
+      throw new Error('No active session');
+    }
+
+    // Toggle pause/resume on backend
+    if (status === 'running') {
+      await sessionsApi.pauseSession(sessionId);
+    } else {
+      await sessionsApi.resumeSession(sessionId);
+    }
+  }
+);
+
+// ============================================================================
+// Slice
+// ============================================================================
 
 const activeSessionSlice = createSlice({
   name: 'activeSession',
@@ -137,6 +171,18 @@ const activeSessionSlice = createSlice({
     },
     
     resetSession: () => initialState,
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(togglePauseAsync.pending, (state) => {
+        // Optimistically toggle state before API response
+        state.status = state.status === 'running' ? 'paused' : 'running';
+      })
+      .addCase(togglePauseAsync.rejected, (state, action) => {
+        // Revert on error
+        state.status = state.status === 'running' ? 'paused' : 'running';
+        console.error('[togglePauseAsync] Failed:', action.error);
+      });
   },
 });
 
