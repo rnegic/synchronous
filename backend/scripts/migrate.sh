@@ -3,8 +3,12 @@
 
 set -e
 
-# Получаем DSN из переменной окружения или используем дефолтный
-DB_DSN="${DB_DSN:-postgres://synchronous_user:change_me@postgres:5432/synchronous_db?sslmode=disable}"
+# Получаем DSN из переменной окружения (должна быть установлена в docker-compose)
+if [ -z "$DB_DSN" ]; then
+    echo "❌ Ошибка: переменная окружения DB_DSN не установлена"
+    echo "   Убедитесь, что контейнер запущен через docker-compose"
+    exit 1
+fi
 
 # Проверяем наличие goose
 if ! command -v goose >/dev/null 2>&1; then
