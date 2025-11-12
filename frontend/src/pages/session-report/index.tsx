@@ -1,5 +1,6 @@
-import { Button, Tabs } from 'antd';
-import { useNavigate } from 'react-router';
+import { useState, useEffect } from 'react';
+import { Button, Tabs, Spin, message } from 'antd';
+import { useNavigate, useParams } from 'react-router';
 import { HomeOutlined } from '@ant-design/icons';
 import { useAppSelector, useAppDispatch } from '@/shared/hooks/redux';
 import {
@@ -12,9 +13,24 @@ import { SessionStats } from '@/widgets/session-stats/ui';
 import { Leaderboard } from '@/widgets/leaderboard/ui';
 import { ChatWidget } from '@/widgets/chat/ui';
 import { AIReportTeaser } from '@/features/ai-assistant/ui';
-import { mockUsers } from '@/shared/lib/mockData';
+import { sessionsApi, messagesApi, leaderboardApi } from '@/shared/api';
+import { useMaxWebApp } from '@/shared/hooks/useMaxWebApp';
+import { useAuth } from '@/app/store';
 import type { Task } from '@/shared/types';
+import type { SessionReport, LeaderboardEntry as ApiLeaderboardEntry, Message } from '@/shared/api';
 import './styles.css';
+
+// Leaderboard component expects different type
+interface ComponentLeaderboardEntry {
+  user: {
+    id: string;
+    name: string;
+    avatar: string;
+  };
+  tasksCompleted: number;
+  focusTime: number;
+  score: number;
+}
 
 /**
  * Session Report Page
@@ -23,58 +39,87 @@ import './styles.css';
 export function SessionReportPage() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const { sessionId } = useParams<{ sessionId: string }>();
+  const { isMaxEnvironment } = useMaxWebApp();
+  const { user } = useAuth();
 
   const isGroupMode = useAppSelector(selectIsGroupMode);
-  const tasks = useAppSelector(selectSessionTasks) as Task[];
+  const localTasks = useAppSelector(selectSessionTasks) as Task[];
   const currentCycle = useAppSelector(selectCurrentCycle);
 
-  // Calculate stats
-  const tasksCompleted = tasks.filter((t) => t.completed).length;
-  const tasksTotal = tasks.length;
-  const focusTime = currentCycle * 25; // Mock
-  const breakTime = currentCycle * 5; // Mock
+  const [report, setReport] = useState<SessionReport | null>(null);
+  const [leaderboard, setLeaderboard] = useState<ApiLeaderboardEntry[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Mock leaderboard data
-  const leaderboardEntries = [
-    {
-      user: mockUsers[0],
-      tasksCompleted: 5,
-      focusTime: 75,
-      score: 450,
-    },
-    {
-      user: mockUsers[1],
-      tasksCompleted: 4,
-      focusTime: 60,
-      score: 380,
-    },
-    {
-      user: mockUsers[2],
-      tasksCompleted: 3,
-      focusTime: 50,
-      score: 320,
-    },
-  ];
+  // Load session report data
+  useEffect(() => {
+    if (!sessionId) {
+      navigate('/');
+      return;
+    }
 
-  // Mock chat messages
-  const chatMessages = [
-    {
-      id: '1',
-      userId: mockUsers[1].id,
-      userName: mockUsers[1].name,
-      avatar: mockUsers[1].avatar,
-      text: 'Отличная сессия! 🔥',
-      createdAt: new Date().toISOString(),
+    const loadReportData = async () => {
+      if (!isMaxEnvironment) {
+        // Use fallback data for dev mode
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        // Load session report
+        const reportResponse = await sessionsApi.completeSession(sessionId);
+        setReport(reportResponse.report);
+
+        // Load session leaderboard (for group sessions)
+        if (isGroupMode) {
+          const leaderboardResponse = await leaderboardApi.getSessionLeaderboard(sessionId);
+          setLeaderboard(leaderboardResponse.leaderboard);
+
+          // Load chat messages
+          const messagesResponse = await messagesApi.getMessages(sessionId);
+          setMessages(messagesResponse.messages);
+        }
+      } catch (error) {
+        console.error('[SessionReport] Failed to load report:', error);
+        message.error('Не удалось загрузить отчёт сессии');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadReportData();
+  }, [sessionId, isGroupMode, isMaxEnvironment, navigate]);
+
+  // Calculate stats from report or fallback to local data
+  const tasksCompleted = report?.tasksCompleted ?? localTasks.filter((t) => t.completed).length;
+  const tasksTotal = report?.tasksTotal ?? localTasks.length;
+  const focusTime = report?.focusTime ?? currentCycle * 25;
+  const breakTime = report?.breakTime ?? currentCycle * 5;
+
+  // Transform API leaderboard entries to component format
+  const leaderboardEntries: ComponentLeaderboardEntry[] = (
+    report?.participants || leaderboard
+  ).map((p) => ({
+    user: {
+      id: p.userId,
+      name: p.userName,
+      avatar: p.avatarUrl,
     },
-    {
-      id: '2',
-      userId: mockUsers[0].id,
-      userName: mockUsers[0].name,
-      avatar: mockUsers[0].avatar,
-      text: 'Спасибо! Продуктивно поработали 💪',
-      createdAt: new Date().toISOString(),
-    },
-  ];
+    tasksCompleted: p.tasksCompleted,
+    focusTime: p.focusTime,
+    score: 'score' in p ? (p as ApiLeaderboardEntry).score : p.tasksCompleted * 100 + p.focusTime,
+  }));
+
+  // Transform API messages to component format
+  const chatMessages = messages.map((msg) => ({
+    id: msg.id,
+    userId: msg.userId,
+    userName: msg.userName,
+    avatar: msg.avatarUrl,
+    text: msg.text,
+    createdAt: msg.createdAt,
+  }));
 
   const handleGoHome = () => {
     dispatch(resetSessionSetup());
@@ -82,14 +127,23 @@ export function SessionReportPage() {
   };
 
   const handleSendMessage = (text: string) => {
-    console.log('Send message:', text);
-    // TODO: Implement message sending
+    console.log('[SessionReport] Send message:', text);
+    // TODO: Will be implemented in next iteration with messagesApi.sendMessage()
+    message.info('Отправка сообщений будет доступна в следующей версии');
   };
 
   const handleUpgrade = () => {
-    console.log('Upgrade to Pro clicked');
+    console.log('[SessionReport] Upgrade to Pro clicked');
     // TODO: Implement upgrade flow
   };
+
+  if (isLoading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
+        <Spin size="large" />
+      </div>
+    );
+  }
 
   const tabItems = [
     {
@@ -103,7 +157,7 @@ export function SessionReportPage() {
       children: (
         <ChatWidget
           messages={chatMessages}
-          currentUserId={mockUsers[0].id}
+          currentUserId={user?.id || ''}
           onSendMessage={handleSendMessage}
         />
       ),

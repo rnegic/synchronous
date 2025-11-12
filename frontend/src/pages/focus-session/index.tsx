@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router';
 import { message } from 'antd';
 import { useAppDispatch, useAppSelector } from '@/shared/hooks/redux';
 import { ProgressTracker } from '@/widgets/progress-tracker/ui';
@@ -19,12 +19,18 @@ import {
   selectBreakDuration,
 } from '@/entities/session/model/selectors';
 import { startSession, addParticipant } from '@/entities/session/model/activeSessionSlice';
+import { sessionsApi, getErrorMessage } from '@/shared/api';
+import { useMaxWebApp } from '@/shared/hooks/useMaxWebApp';
 import type { User, Task } from '@/shared/types';
 import './styles.css';
 
 export function FocusSessionPage() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const { sessionId: routeSessionId } = useParams<{ sessionId: string }>();
+  const { isMaxEnvironment } = useMaxWebApp();
+  //@ts-expect-error
+  const [isLoadingSession, setIsLoadingSession] = useState(false);
   
   // Session setup state
   const setupTasks = useAppSelector(selectTasks);
@@ -34,9 +40,47 @@ export function FocusSessionPage() {
   const breakDuration = useAppSelector(selectBreakDuration);
   
   // Active session state
-  const sessionId = useAppSelector(selectSessionId);
+  const reduxSessionId = useAppSelector(selectSessionId);
   const isGroupMode = useAppSelector(selectIsGroupMode);
   const isCompleted = useAppSelector(selectIsCompleted);
+  
+  const sessionId = routeSessionId || reduxSessionId;
+
+  // Load session from backend if coming from route params
+  useEffect(() => {
+    if (routeSessionId && isMaxEnvironment && !reduxSessionId) {
+      const loadSession = async () => {
+        setIsLoadingSession(true);
+        try {
+          const response = await sessionsApi.getSessionById(routeSessionId);
+          const { session } = response;
+          
+          // Initialize Redux with backend data
+          dispatch(startSession({
+            sessionId: session.id,
+            mode: session.mode,
+            groupName: session.groupName,
+            focusDuration: session.focusDuration,
+            breakDuration: session.breakDuration,
+            tasks: session.tasks.map(task => ({
+              id: task.id,
+              title: task.title,
+              completed: task.completed,
+              createdAt: task.createdAt,
+            })),
+          }));
+        } catch (error) {
+          console.error('[FocusSession] Failed to load session:', error);
+          message.error(`Ошибка загрузки сессии: ${getErrorMessage(error)}`);
+          navigate('/');
+        } finally {
+          setIsLoadingSession(false);
+        }
+      };
+      
+      loadSession();
+    }
+  }, [routeSessionId, reduxSessionId, isMaxEnvironment, dispatch, navigate]);
   
   // Initialize session on mount if not already started
   useEffect(() => {
@@ -66,13 +110,21 @@ export function FocusSessionPage() {
   
   // Redirect to report when session is completed
   useEffect(() => {
-    if (isCompleted) {
+    if (isCompleted && sessionId) {
       message.success('Сессия завершена! Отличная работа! 🎉');
+      
+      // Complete session on backend if in MAX environment
+      if (isMaxEnvironment) {
+        sessionsApi.completeSession(sessionId).catch(error => {
+          console.error('[FocusSession] Failed to complete session:', error);
+        });
+      }
+      
       setTimeout(() => {
-        navigate('/session-report');
+        navigate(`/session-report/${sessionId}`);
       }, 1000);
     }
-  }, [isCompleted, navigate]);
+  }, [isCompleted, sessionId, navigate, isMaxEnvironment]);
   
   // Redirect to home if no session data
   if (!sessionId && setupTasks.length === 0) {

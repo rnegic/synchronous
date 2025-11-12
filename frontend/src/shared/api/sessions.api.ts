@@ -48,6 +48,22 @@ export const getSessionHistory = async (
 };
 
 /**
+ * Get public active sessions
+ * @param page - Page number (default: 1)
+ * @param limit - Items per page (default: 10)
+ * @returns Paginated list of public active sessions
+ */
+export const getPublicSessions = async (
+  page: number = 1,
+  limit: number = 10
+): Promise<SessionsHistoryResponse> => {
+  const response = await apiClient.get<SessionsHistoryResponse>('/sessions/public', {
+    params: { page, limit },
+  });
+  return response.data;
+};
+
+/**
  * Get currently active session
  * @returns Active session or null
  */

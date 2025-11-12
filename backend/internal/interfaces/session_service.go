@@ -9,6 +9,7 @@ type SessionService interface {
 	GetSession(sessionID string, userID string) (*entity.Session, error)
 	GetActiveSession(userID string) (*entity.Session, error)
 	GetHistory(userID string, page, limit int) ([]*entity.Session, int, error)
+	GetPublicSessions(page, limit int) ([]*entity.Session, int, error)
 	JoinSession(sessionID string, userID string) (*entity.Session, error)
 	SetReady(sessionID string, userID string, isReady bool) error
 	StartSession(sessionID string, userID string) error

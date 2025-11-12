@@ -133,6 +133,37 @@ func (s *SessionService) GetHistory(userID string, page, limit int) ([]*entity.S
 	return s.sessionRepo.GetHistory(userID, page, limit)
 }
 
+func (s *SessionService) GetPublicSessions(page, limit int) ([]*entity.Session, int, error) {
+	// Get all public sessions that are pending (waiting for participants)
+	sessions, err := s.sessionRepo.GetAll()
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get sessions: %w", err)
+	}
+
+	// Filter for public and pending sessions
+	publicSessions := make([]*entity.Session, 0)
+	for _, session := range sessions {
+		if !session.IsPrivate && session.Status == entity.SessionStatusPending {
+			publicSessions = append(publicSessions, session)
+		}
+	}
+
+	total := len(publicSessions)
+	
+	// Apply pagination
+	start := (page - 1) * limit
+	if start >= total {
+		return []*entity.Session{}, total, nil
+	}
+
+	end := start + limit
+	if end > total {
+		end = total
+	}
+
+	return publicSessions[start:end], total, nil
+}
+
 func (s *SessionService) JoinSession(sessionID string, userID string) (*entity.Session, error) {
 	session, err := s.sessionRepo.GetByID(sessionID)
 	if err != nil {

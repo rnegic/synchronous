@@ -117,3 +117,14 @@ func (r *sessionRepository) GetSessionsByStatus(status entity.SessionStatus) ([]
 	}
 	return sessions, nil
 }
+
+func (r *sessionRepository) GetAll() ([]*entity.Session, error) {
+	var sessions []*entity.Session
+	err := r.db.Preload("Tasks").Preload("Participants").
+		Order("created_at DESC").
+		Find(&sessions).Error
+	if err != nil {
+		return nil, err
+	}
+	return sessions, nil
+}

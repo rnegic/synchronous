@@ -37,6 +37,7 @@ func (h *SessionHandler) RegisterRoutes(router *gin.RouterGroup) {
 	{
 		// Список сессий и создание
 		sessions.GET("", h.getHistory)
+		sessions.GET("/public", h.getPublicSessions)
 		sessions.POST("", h.createSession)
 		sessions.GET("/active", h.getActiveSession)
 
@@ -139,6 +140,47 @@ func (h *SessionHandler) getHistory(c *gin.Context) {
 	}
 
 	sessions, total, err := h.sessionService.GetHistory(userID, page, limit)
+	if err != nil {
+		h.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	sessionsList := make([]gin.H, 0, len(sessions))
+	for _, session := range sessions {
+		sessionsList = append(sessionsList, h.sessionToMap(session))
+	}
+
+	hasNext := (page * limit) < total
+
+	h.SuccessResponse(c, http.StatusOK, gin.H{
+		"sessions": sessionsList,
+		"pagination": gin.H{
+			"page":    page,
+			"limit":   limit,
+			"total":   total,
+			"hasNext": hasNext,
+		},
+	})
+}
+
+	});
+}
+
+// getPublicSessions возвращает список публичных сессий
+func (h *SessionHandler) getPublicSessions(c *gin.Context) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if page < 1 {
+		page = 1
+	}
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	if limit < 1 {
+		limit = 10
+	}
+	if limit > 50 {
+		limit = 50
+	}
+
+	sessions, total, err := h.sessionService.GetPublicSessions(page, limit)
 	if err != nil {
 		h.ErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return

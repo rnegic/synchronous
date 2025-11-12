@@ -1,16 +1,73 @@
-import { useState } from 'react';
-import { Typography, List, Empty, Flex, Button } from 'antd';
+import { useState, useEffect } from 'react';
+import { Typography, List, Empty, Flex, Button, Spin, message } from 'antd';
 import { useNavigate } from 'react-router';
 import { RocketOutlined } from '@ant-design/icons';
 import { OnboardingCarousel, SessionCard } from '@/shared/ui';
 import { onboardingSteps, mockSessions } from '@/shared/lib/mockData';
+import { useMaxWebApp } from '@/shared/hooks/useMaxWebApp';
+import { sessionsApi } from '@/shared/api';
+import type { Session as ApiSession } from '@/shared/api';
+import type { Session, User } from '@/shared/types';
 import './styles.css';
 
 const { Title, Text } = Typography;
 
 export function HomePage() {
   const navigate = useNavigate();
-  const [activeSessions] = useState(mockSessions);
+  const { isMaxEnvironment } = useMaxWebApp();
+  const [activeSessions, setActiveSessions] = useState<Session[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch active public sessions
+  useEffect(() => {
+    const fetchActiveSessions = async () => {
+      if (!isMaxEnvironment) {
+        // Use mock data for dev mode
+        console.log('[HomePage] Using mock data');
+        setActiveSessions(mockSessions);
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const response = await sessionsApi.getPublicSessions(1, 10);
+        
+        // Transform API sessions to UI format
+        const sessions: Session[] = response.sessions.map((s: ApiSession) => {
+          const participants: User[] = s.participants.map(p => ({
+            id: p.userId,
+            name: p.userName,
+            avatar: p.avatarUrl,
+          }));
+
+          return {
+            id: s.id,
+            name: s.groupName || 'Групповая сессия',
+            isPrivate: s.isPrivate,
+            participants,
+            maxParticipants: 10, // Default
+            focusDuration: s.focusDuration,
+            breakDuration: s.breakDuration,
+            status: s.status === 'active' ? 'active' : 'waiting',
+            createdAt: s.createdAt,
+            startedAt: s.startedAt || undefined,
+            tasks: s.tasks,
+          };
+        });
+
+        setActiveSessions(sessions);
+      } catch (error) {
+        console.error('[HomePage] Failed to load sessions:', error);
+        message.error('Не удалось загрузить список сессий');
+        // Fallback to mock data on error
+        setActiveSessions(mockSessions);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchActiveSessions();
+  }, [isMaxEnvironment]);
 
   const handleStartFocus = () => {
     navigate('/session-setup');
@@ -19,6 +76,14 @@ export function HomePage() {
   const handleJoinSession = (sessionId: string) => {
     navigate(`/lobby/${sessionId}`);
   };
+
+  if (isLoading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
+        <Spin size="large" />
+      </div>
+    );
+  }
 
   return (
     <>

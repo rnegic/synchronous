@@ -36,6 +36,8 @@ export interface MaxWebApp {
   expand: () => void;
   enableClosingConfirmation: () => void;
   disableClosingConfirmation: () => void;
+  openLink: (url: string) => void;
+  openMaxLink: (url: string) => void;
   isExpanded: boolean;
   viewportHeight: number;
   viewportStableHeight: number;

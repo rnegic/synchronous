@@ -12,6 +12,7 @@ type SessionRepository interface {
 	GetByInviteLink(inviteLink string) (*entity.Session, error)
 	GetActiveByUserID(userID string) (*entity.Session, error)
 	GetHistory(userID string, page, limit int) ([]*entity.Session, int, error)
+	GetAll() ([]*entity.Session, error)
 	Update(session *entity.Session) error
 	AddParticipant(sessionID string, participant *entity.Participant) error
 	RemoveParticipant(sessionID string, userID string) error

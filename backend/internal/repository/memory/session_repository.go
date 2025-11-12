@@ -209,3 +209,15 @@ func (r *SessionRepository) GetSessionsByStatus(status entity.SessionStatus) ([]
 
 	return sessions, nil
 }
+
+func (r *SessionRepository) GetAll() ([]*entity.Session, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	sessions := make([]*entity.Session, 0, len(r.sessions))
+	for _, session := range r.sessions {
+		sessions = append(sessions, session)
+	}
+
+	return sessions, nil
+}
