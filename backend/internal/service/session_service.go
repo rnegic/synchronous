@@ -42,21 +42,6 @@ func (s *SessionService) CreateSession(
 	sessionID := uuid.New().String()
 	inviteLink := uuid.New().String()[:8] // Короткая ссылка
 
-	tasksList := make([]entity.Task, 0, len(tasks))
-	for _, title := range tasks {
-		task := entity.Task{
-			ID:        uuid.New().String(),
-			Title:     title,
-			Completed: false,
-			SessionID: sessionID,
-			CreatedAt: time.Now(),
-		}
-		tasksList = append(tasksList, task)
-		if err := s.taskRepo.Create(&task); err != nil {
-			return nil, fmt.Errorf("failed to create task: %w", err)
-		}
-	}
-
 	participants := []entity.Participant{
 		{
 			UserID:   userID,
@@ -66,11 +51,11 @@ func (s *SessionService) CreateSession(
 		},
 	}
 
+	// Сначала создаем сессию, чтобы она существовала в БД для внешних ключей
 	session := &entity.Session{
 		ID:            sessionID,
 		Mode:          mode,
 		Status:        entity.SessionStatusPending,
-		Tasks:         tasksList,
 		FocusDuration: focusDuration,
 		BreakDuration: breakDuration,
 		GroupName:     groupName,
@@ -85,6 +70,27 @@ func (s *SessionService) CreateSession(
 	if err := s.sessionRepo.Create(session); err != nil {
 		return nil, fmt.Errorf("failed to create session: %w", err)
 	}
+
+	// Теперь создаем задачи после создания сессии
+	tasksList := make([]entity.Task, 0, len(tasks))
+	for _, title := range tasks {
+		task := entity.Task{
+			ID:        uuid.New().String(),
+			Title:     title,
+			Completed: false,
+			SessionID: sessionID,
+			CreatedAt: time.Now(),
+		}
+		if err := s.taskRepo.Create(&task); err != nil {
+			// Если не удалось создать задачу, возвращаем ошибку
+			// В реальности здесь должна быть транзакция для отката создания сессии
+			return nil, fmt.Errorf("failed to create task: %w", err)
+		}
+		tasksList = append(tasksList, task)
+	}
+
+	// Добавляем задачи в объект сессии для возврата
+	session.Tasks = tasksList
 
 	return session, nil
 }
@@ -149,7 +155,7 @@ func (s *SessionService) GetPublicSessions(page, limit int) ([]*entity.Session, 
 	}
 
 	total := len(publicSessions)
-	
+
 	// Apply pagination
 	start := (page - 1) * limit
 	if start >= total {
