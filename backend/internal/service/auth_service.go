@@ -50,6 +50,11 @@ func (s *AuthService) Login(initData, deviceID string) (*entity.AuthTokens, *ent
 
 	fmt.Printf("[Auth Service] ✅ Validation successful\n")
 
+	startParam := payload["start_param"]
+	if startParam != "" {
+		fmt.Printf("[Auth Service] 📎 Found start_param: %s\n", startParam)
+	}
+
 	userJSON, ok := payload["user"]
 	if !ok || strings.TrimSpace(userJSON) == "" {
 		fmt.Printf("[Auth Service] ❌ Missing user payload\n")

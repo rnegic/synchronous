@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -161,9 +162,9 @@ func (s *SessionService) GetPublicSessions(page, limit int) ([]*entity.Session, 
 	// Filter for public, pending, and GROUP sessions only (no solo sessions)
 	publicSessions := make([]*entity.Session, 0)
 	for _, session := range sessions {
-		if !session.IsPrivate && 
-		   session.Status == entity.SessionStatusPending && 
-		   session.Mode == entity.SessionModeGroup {
+		if !session.IsPrivate &&
+			session.Status == entity.SessionStatusPending &&
+			session.Mode == entity.SessionModeGroup {
 			publicSessions = append(publicSessions, session)
 		}
 	}
@@ -213,6 +214,33 @@ func (s *SessionService) JoinSession(sessionID string, userID string) (*entity.S
 	}
 
 	return s.GetSession(sessionID, userID)
+}
+
+func (s *SessionService) JoinByInviteLink(inviteLink string, userID string) (*entity.Session, error) {
+	cleanInviteLink := inviteLink
+	if strings.HasPrefix(inviteLink, "invite_") {
+		cleanInviteLink = strings.TrimPrefix(inviteLink, "invite_")
+	}
+
+	session, err := s.sessionRepo.GetByInviteLink(cleanInviteLink)
+	if err != nil {
+		return nil, fmt.Errorf("session not found by invite link: %w", err)
+	}
+
+	if session == nil {
+		return nil, fmt.Errorf("session not found by invite link")
+	}
+
+	// Проверяем, не присоединен ли уже пользователь
+	for _, p := range session.Participants {
+		if p.UserID == userID {
+			// Уже участник, просто возвращаем сессию
+			return s.GetSession(session.ID, userID)
+		}
+	}
+
+	// Присоединяем пользователя
+	return s.JoinSession(session.ID, userID)
 }
 
 func (s *SessionService) SetReady(sessionID string, userID string, isReady bool) error {

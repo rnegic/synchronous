@@ -1,4 +1,4 @@
-.PHONY: run migrate-up migrate-down migrate-status migrate-create migrate-reset migrate-fix migrate-version install-goose check-goose help
+.PHONY: run migrate-up migrate-down migrate-status migrate-create migrate-reset migrate-fix migrate-version install-goose check-goose migrate-up-docker migrate-status-docker migrate-down-docker migrate-script-docker migrate-up-docker-explicit help
 
 # Запуск приложения
 run:
@@ -77,10 +77,48 @@ migrate-version: check-goose
 	@goose -dir $(MIGRATIONS_DIR) postgres "$(DB_DSN)" up-to $(VERSION)
 	@echo "✅ Миграции применены до версии $(VERSION)"
 
+# ============================================================================
+# Миграции в Docker контейнере
+# ============================================================================
+
+# Применение миграций в контейнере (использует DB_DSN из переменных окружения контейнера)
+migrate-up-docker:
+	@echo "🐳 Применение миграций в Docker контейнере..."
+	@cd .. && docker compose run --rm backend sh -c 'goose -dir migrations postgres "$$DB_DSN" up'
+	@echo "✅ Миграции применены"
+
+# Статус миграций в контейнере
+migrate-status-docker:
+	@echo "🐳 Статус миграций в Docker контейнере:"
+	@cd .. && docker compose run --rm backend sh -c 'goose -dir migrations postgres "$$DB_DSN" status'
+
+# Откат последней миграции в контейнере
+migrate-down-docker:
+	@echo "🐳 Откат последней миграции в Docker контейнере..."
+	@cd .. && docker compose run --rm backend sh -c 'goose -dir migrations postgres "$$DB_DSN" down'
+	@echo "✅ Миграция откачена"
+
+# Использование скрипта migrate.sh в контейнере
+migrate-script-docker:
+	@echo "🐳 Запуск миграций через скрипт в контейнере..."
+	@cd .. && (docker compose exec backend sh /root/scripts/migrate.sh 2>/dev/null || \
+		docker compose run --rm backend sh /root/scripts/migrate.sh)
+
+# Применение миграций с явной передачей DSN (если DB_DSN не установлена в контейнере)
+migrate-up-docker-explicit:
+	@echo "🐳 Применение миграций в Docker контейнере (с явным DSN)..."
+	@if [ -z "$(DB_DSN)" ]; then \
+		echo "❌ Укажите DB_DSN: make migrate-up-docker-explicit DB_DSN=\"postgres://...\""; \
+		exit 1; \
+	fi
+	@cd .. && docker compose run --rm -e DB_DSN="$(DB_DSN)" backend sh -c 'goose -dir migrations postgres "$$DB_DSN" up'
+	@echo "✅ Миграции применены"
+
 # Справка
 help:
 	@echo "📚 Доступные команды для миграций:"
 	@echo ""
+	@echo "Локальные команды (требуют установленный goose):"
 	@echo "  make install-goose          - Установить goose"
 	@echo "  make migrate-up              - Применить все миграции"
 	@echo "  make migrate-down            - Откатить последнюю миграцию"
@@ -90,7 +128,15 @@ help:
 	@echo "  make migrate-fix             - Исправить версию миграции"
 	@echo "  make migrate-version VERSION=123 - Применить до версии"
 	@echo ""
+	@echo "Docker команды (работают в контейнере):"
+	@echo "  make migrate-up-docker        - Применить миграции в контейнере (использует DB_DSN из контейнера)"
+	@echo "  make migrate-status-docker    - Статус миграций в контейнере"
+	@echo "  make migrate-down-docker      - Откатить миграцию в контейнере"
+	@echo "  make migrate-script-docker    - Запустить через migrate.sh"
+	@echo "  make migrate-up-docker-explicit DB_DSN=\"...\" - Применить с явным DSN"
+	@echo ""
 	@echo "Примеры:"
 	@echo "  DB_DSN=\"postgres://user:pass@localhost:5432/db?sslmode=disable\" make migrate-up"
+	@echo "  make migrate-up-docker"
 	@echo "  make migrate-version VERSION=5"
 	@echo ""

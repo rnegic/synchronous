@@ -96,6 +96,19 @@ export const joinSession = async (sessionId: string): Promise<SessionResponse> =
 };
 
 /**
+ * Join session by invite link
+ * @param inviteLink - Invite link code (with or without "invite_" prefix)
+ * @returns Updated session with participant
+ */
+export const joinByInviteLink = async (inviteLink: string): Promise<SessionResponse> => {
+  const response = await apiClient.post<SessionResponse>(
+    '/sessions/join-by-invite',
+    { inviteLink }
+  );
+  return response.data;
+};
+
+/**
  * Update participant ready status
  * @param sessionId - Session UUID
  * @param isReady - Ready status

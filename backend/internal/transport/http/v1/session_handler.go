@@ -43,6 +43,7 @@ func (h *SessionHandler) RegisterRoutes(router *gin.RouterGroup) {
 		sessions.GET("/public", h.getPublicSessions)
 		sessions.POST("", h.createSession)
 		sessions.GET("/active", h.getActiveSession)
+		sessions.POST("/join-by-invite", h.joinByInviteLink)
 
 		// Сессия по ID
 		session := sessions.Group("/:sessionId")
@@ -168,7 +169,6 @@ func (h *SessionHandler) getHistory(c *gin.Context) {
 	})
 }
 
-
 // getPublicSessions возвращает список публичных сессий
 func (h *SessionHandler) getPublicSessions(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
@@ -288,6 +288,62 @@ func (h *SessionHandler) joinSession(c *gin.Context) {
 		if joinedParticipant != nil {
 			h.wsHandler.BroadcastMessage("participant_joined", gin.H{
 				"sessionId": sessionID,
+				"participant": gin.H{
+					"userId":    joinedParticipant.UserID,
+					"userName":  joinedParticipant.UserName,
+					"avatarUrl": joinedParticipant.AvatarURL,
+					"isReady":   joinedParticipant.IsReady,
+					"joinedAt":  joinedParticipant.JoinedAt.Format(time.RFC3339),
+				},
+			})
+		}
+	}
+
+	h.SuccessResponse(c, http.StatusOK, gin.H{
+		"session": h.sessionToMap(session),
+	})
+}
+
+func (h *SessionHandler) joinByInviteLink(c *gin.Context) {
+	userID := h.GetUserID(c)
+	if userID == "" {
+		h.ErrorResponse(c, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	var req struct {
+		InviteLink string `json:"inviteLink" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.ErrorResponse(c, http.StatusBadRequest, "inviteLink is required")
+		return
+	}
+
+	session, err := h.sessionService.JoinByInviteLink(req.InviteLink, userID)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			h.ErrorResponse(c, http.StatusNotFound, "session not found by invite link")
+		} else if strings.Contains(err.Error(), "already started") {
+			h.ErrorResponse(c, http.StatusBadRequest, err.Error())
+		} else {
+			h.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	// Broadcast participant_joined event via WebSocket
+	if h.wsHandler != nil {
+		var joinedParticipant *entity.Participant
+		for _, p := range session.Participants {
+			if p.UserID == userID {
+				joinedParticipant = &p
+				break
+			}
+		}
+
+		if joinedParticipant != nil {
+			h.wsHandler.BroadcastMessage("participant_joined", gin.H{
+				"sessionId": session.ID,
 				"participant": gin.H{
 					"userId":    joinedParticipant.UserID,
 					"userName":  joinedParticipant.UserName,

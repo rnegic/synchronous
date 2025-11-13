@@ -11,6 +11,7 @@ type SessionService interface {
 	GetHistory(userID string, page, limit int) ([]*entity.Session, int, error)
 	GetPublicSessions(page, limit int) ([]*entity.Session, int, error)
 	JoinSession(sessionID string, userID string) (*entity.Session, error)
+	JoinByInviteLink(inviteLink string, userID string) (*entity.Session, error)
 	SetReady(sessionID string, userID string, isReady bool) error
 	StartSession(sessionID string, userID string) error
 	PauseSession(sessionID string, userID string) error
