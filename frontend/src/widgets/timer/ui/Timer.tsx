@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Progress, Button, Modal } from 'antd';
 import { PlayCircleOutlined, PauseCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
@@ -33,6 +33,9 @@ export const Timer = () => {
   const phase = useAppSelector(selectPhase);
   const currentCycle = useAppSelector(selectCurrentCycle);
   const sessionId = useAppSelector(selectSessionId);
+  
+  const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
   
   // Timer tick effect
   useEffect(() => {
@@ -70,35 +73,38 @@ export const Timer = () => {
       return;
     }
     
-    Modal.confirm({
-      title: 'Завершить сессию?',
-      content: 'Вы уверены, что хотите завершить сессию досрочно? Прогресс будет сохранен.',
-      okText: 'Да, завершить',
-      cancelText: 'Отмена',
-      okButtonProps: { danger: true },
-      onOk: async () => {
-        console.log('[Timer] Modal confirmed, starting session completion', { sessionId });
-        try {
-          const result = await dispatch(completeSessionAsync({ isMaxEnvironment })).unwrap();
-          console.log('[Timer] Session completed successfully', result);
-          message.success('Сессия завершена! 🎉');
-          
-          // Явный редирект на страницу отчета
-          console.log('[Timer] Redirecting to report page', { sessionId });
-          setTimeout(() => {
-            navigate(`/session-report/${sessionId}`);
-          }, 500);
-        } catch (error) {
-          console.error('[Timer] Failed to complete session:', error);
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          console.error('[Timer] Error details:', { errorMessage, error });
-          message.error(`Ошибка завершения: ${getErrorMessage(error)}`);
-        }
-      },
-      onCancel: () => {
-        console.log('[Timer] Modal cancelled');
-      },
-    });
+    setIsCompleteModalOpen(true);
+  };
+  
+  const handleConfirmComplete = async () => {
+    console.log('[Timer] Modal confirmed, starting session completion', { sessionId });
+    setIsCompleting(true);
+    
+    try {
+      const result = await dispatch(completeSessionAsync({ isMaxEnvironment })).unwrap();
+      console.log('[Timer] Session completed successfully', result);
+      setIsCompleteModalOpen(false);
+      message.success('Сессия завершена! 🎉');
+      
+      // Явный редирект на страницу отчета
+      console.log('[Timer] Redirecting to report page', { sessionId });
+      setTimeout(() => {
+        navigate(`/session-report/${sessionId}`);
+      }, 500);
+    } catch (error) {
+      console.error('[Timer] Failed to complete session:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('[Timer] Error details:', { errorMessage, error });
+      message.error(`Ошибка завершения: ${getErrorMessage(error)}`);
+      setIsCompleteModalOpen(false);
+    } finally {
+      setIsCompleting(false);
+    }
+  };
+  
+  const handleCancelComplete = () => {
+    console.log('[Timer] Modal cancelled');
+    setIsCompleteModalOpen(false);
   };
   
   return (
@@ -154,6 +160,24 @@ export const Timer = () => {
           Завершить
         </Button>
       </div>
+      
+      <Modal
+        title="Завершить сессию?"
+        open={isCompleteModalOpen}
+        onOk={handleConfirmComplete}
+        onCancel={handleCancelComplete}
+        okText="Да, завершить"
+        cancelText="Отмена"
+        okButtonProps={{ danger: true, loading: isCompleting }}
+        cancelButtonProps={{ disabled: isCompleting }}
+        maskClosable={!isCompleting}
+        closable={!isCompleting}
+        zIndex={10000}
+        getContainer={() => document.body}
+        centered
+      >
+        <p>Вы уверены, что хотите завершить сессию досрочно? Прогресс будет сохранен.</p>
+      </Modal>
     </div>
   );
 };
