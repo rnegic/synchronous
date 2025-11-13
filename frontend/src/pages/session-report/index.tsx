@@ -40,7 +40,7 @@ export function SessionReportPage() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { sessionId } = useParams<{ sessionId: string }>();
-  const { isMaxEnvironment } = useMaxWebApp();
+  const { isMaxEnvironment, isReady } = useMaxWebApp();
   const { user } = useAuth();
 
   const isGroupMode = useAppSelector(selectIsGroupMode);
@@ -57,6 +57,11 @@ export function SessionReportPage() {
   useEffect(() => {
     if (!sessionId) {
       navigate('/');
+      return;
+    }
+
+    // Wait for MAX WebApp to initialize
+    if (!isReady) {
       return;
     }
 
@@ -127,7 +132,7 @@ export function SessionReportPage() {
     };
 
     loadReportData();
-  }, [sessionId, isGroupMode, isMaxEnvironment, navigate]);
+  }, [sessionId, isGroupMode, isMaxEnvironment, isReady, navigate]);
 
   // Calculate stats from report or fallback to local data
   const tasksCompleted = report?.tasksCompleted ?? localTasks.filter((t) => t.completed).length;

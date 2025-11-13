@@ -22,7 +22,7 @@ export function LobbyPage() {
   const navigate = useNavigate();
   const { sessionId: routeSessionId } = useParams<{ sessionId: string }>();
   const { user } = useAuth();
-  const { isMaxEnvironment } = useMaxWebApp();
+  const { isMaxEnvironment, isReady: isMaxReady } = useMaxWebApp();
   
   const reduxSessionId = useAppSelector(selectSessionId);
   const groupName = useAppSelector(selectGroupName);
@@ -44,6 +44,11 @@ export function LobbyPage() {
   useEffect(() => {
     if (!sessionId) {
       navigate('/session-setup');
+      return;
+    }
+
+    // Wait for MAX WebApp to initialize before deciding what to show
+    if (!isMaxReady) {
       return;
     }
 
@@ -101,7 +106,7 @@ export function LobbyPage() {
     const pollInterval = setInterval(loadSession, 5000);
 
     return () => clearInterval(pollInterval);
-  }, [sessionId, navigate, isMaxEnvironment, user]);
+  }, [sessionId, navigate, isMaxEnvironment, isMaxReady, user]);
 
   // WebSocket real-time updates
   useWebSocketEvent<Session>('session_updated', useCallback((data) => {

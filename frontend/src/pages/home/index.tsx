@@ -14,12 +14,17 @@ const { Title, Text } = Typography;
 
 export function HomePage() {
   const navigate = useNavigate();
-  const { isMaxEnvironment } = useMaxWebApp();
+  const { isMaxEnvironment, isReady } = useMaxWebApp();
   const [activeSessions, setActiveSessions] = useState<Session[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Fetch active public sessions
   useEffect(() => {
+    // Wait for MAX WebApp to initialize before deciding what to show
+    if (!isReady) {
+      return;
+    }
+
     const fetchActiveSessions = async () => {
       // Dev mode: use mock data immediately
       if (!isMaxEnvironment) {
@@ -68,7 +73,7 @@ export function HomePage() {
     };
 
     fetchActiveSessions();
-  }, [isMaxEnvironment]);
+  }, [isMaxEnvironment, isReady]);
 
   const handleStartFocus = () => {
     navigate('/session-setup');
