@@ -8,15 +8,14 @@ import {
   selectIsRunning,
   selectPhase,
   selectCurrentCycle,
-  selectSessionId,
 } from '@/entities/session/model/activeSessionSelectors';
 import {
   tick,
   switchPhase,
-  completeSession,
   togglePauseAsync,
+  completeSessionAsync,
 } from '@/entities/session/model/activeSessionSlice';
-import { sessionsApi, getErrorMessage } from '@/shared/api';
+import { getErrorMessage } from '@/shared/api';
 import { message } from 'antd';
 import './Timer.css';
 
@@ -28,7 +27,6 @@ export const Timer = () => {
   const isRunning = useAppSelector(selectIsRunning);
   const phase = useAppSelector(selectPhase);
   const currentCycle = useAppSelector(selectCurrentCycle);
-  const sessionId = useAppSelector(selectSessionId);
   
   // Timer tick effect
   useEffect(() => {
@@ -48,11 +46,16 @@ export const Timer = () => {
     }
   }, [progress, isRunning, dispatch]);
   
-  const handleTogglePause = () => {
-    dispatch(togglePauseAsync());
+  const handleTogglePause = async () => {
+    try {
+      await dispatch(togglePauseAsync()).unwrap();
+    } catch (error) {
+      console.error('[Timer] Toggle pause failed:', error);
+      message.error(`Ошибка: ${getErrorMessage(error)}`);
+    }
   };
   
-  const handleStop = async () => {
+  const handleStop = () => {
     Modal.confirm({
       title: 'Завершить сессию?',
       content: 'Вы уверены, что хотите завершить сессию досрочно? Прогресс будет сохранен.',
@@ -60,20 +63,13 @@ export const Timer = () => {
       cancelText: 'Отмена',
       okButtonProps: { danger: true },
       onOk: async () => {
-        // Complete session on backend first
-        if (sessionId) {
-          try {
-            await sessionsApi.completeSession(sessionId);
-            console.log('[Timer] Session completed on backend');
-          } catch (error) {
-            console.error('[Timer] Failed to complete session:', error);
-            message.error(`Ошибка завершения: ${getErrorMessage(error)}`);
-            // Continue with local completion even if API fails
-          }
+        try {
+          await dispatch(completeSessionAsync()).unwrap();
+          console.log('[Timer] Session completed successfully');
+        } catch (error) {
+          console.error('[Timer] Failed to complete session:', error);
+          message.error(`Ошибка завершения: ${getErrorMessage(error)}`);
         }
-        
-        // Then update Redux state
-        dispatch(completeSession());
       },
     });
   };

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { message } from 'antd';
 import { useAppDispatch, useAppSelector } from '@/shared/hooks/redux';
@@ -29,8 +29,6 @@ export function FocusSessionPage() {
   const navigate = useNavigate();
   const { sessionId: routeSessionId } = useParams<{ sessionId: string }>();
   const { isMaxEnvironment } = useMaxWebApp();
-  //@ts-expect-error
-  const [isLoadingSession, setIsLoadingSession] = useState(false);
   
   // Session setup state
   const setupTasks = useAppSelector(selectTasks);
@@ -50,7 +48,6 @@ export function FocusSessionPage() {
   useEffect(() => {
     if (routeSessionId && isMaxEnvironment && !reduxSessionId) {
       const loadSession = async () => {
-        setIsLoadingSession(true);
         try {
           const response = await sessionsApi.getSessionById(routeSessionId);
           const { session } = response;
@@ -73,8 +70,6 @@ export function FocusSessionPage() {
           console.error('[FocusSession] Failed to load session:', error);
           message.error(`Ошибка загрузки сессии: ${getErrorMessage(error)}`);
           navigate('/');
-        } finally {
-          setIsLoadingSession(false);
         }
       };
       
@@ -112,12 +107,6 @@ export function FocusSessionPage() {
   useEffect(() => {
     if (isCompleted && sessionId) {
       message.success('Сессия завершена! Отличная работа! 🎉');
-      
-      // Complete session on backend
-      sessionsApi.completeSession(sessionId).catch(error => {
-        console.error('[FocusSession] Failed to complete session:', error);
-        // Continue to report even if API fails
-      });
       
       setTimeout(() => {
         navigate(`/session-report/${sessionId}`);
