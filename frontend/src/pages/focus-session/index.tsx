@@ -5,13 +5,10 @@ import { useAppDispatch, useAppSelector } from '@/shared/hooks/redux';
 import { ProgressTracker } from '@/widgets/progress-tracker/ui';
 import { Timer } from '@/widgets/timer/ui';
 import { TaskList } from '@/features/task-list/ui';
-import { InviteFriends } from '@/features/invite-friends/ui';
 import {
   selectSessionId,
-  selectIsGroupMode,
   selectIsCompleted,
 } from '@/entities/session/model/activeSessionSelectors';
-import { selectInviteLink as selectActiveInviteLink } from '@/entities/session/model/activeSessionSelectors';
 import {
   selectTasks,
   selectMode,
@@ -40,9 +37,7 @@ export function FocusSessionPage() {
   
   // Active session state
   const reduxSessionId = useAppSelector(selectSessionId);
-  const isGroupMode = useAppSelector(selectIsGroupMode);
   const isCompleted = useAppSelector(selectIsCompleted);
-  const activeInviteCode = useAppSelector(selectActiveInviteLink);
   
   const sessionId = routeSessionId || reduxSessionId;
 
@@ -134,10 +129,6 @@ export function FocusSessionPage() {
     return null;
   }
   
-  const handleInviteFriends = (_userIds: string[]) => {
-    // Backend invitation sending is handled via Max link; no local participant mutation here
-  };
-  
   return (
     <div className="focus-session-page">
       <div className="focus-session-page__container">
@@ -149,12 +140,6 @@ export function FocusSessionPage() {
         
         <div className="focus-session-page__bottom">
           <TaskList />
-          
-          {isGroupMode && (
-            <div className="focus-session-page__invite">
-              <InviteFriends sessionInviteCode={activeInviteCode || undefined} onInvite={handleInviteFriends} />
-            </div>
-          )}
         </div>
       </div>
     </div>

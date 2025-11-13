@@ -139,8 +139,9 @@ export function LobbyPage() {
   
   // Get bot username from environment or use default
   const botBaseUrl = import.meta.env.VITE_MAX_BOT_URL || `https://max.ru/${import.meta.env.VITE_MAX_BOT_USERNAME || 't71_hakaton_bot'}?startapp=`;
+  // inviteLink from backend already contains the full code (e.g., 'invite_abc123')
   const inviteLink = session?.inviteLink
-    ? `${botBaseUrl}invite_${session.inviteLink}`
+    ? `${botBaseUrl}${session.inviteLink}`
     : `${botBaseUrl}`;
 
   useEffect(() => {
