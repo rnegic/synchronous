@@ -119,15 +119,31 @@ jobs:
 
       - name: Create frontend archive
         run: |
+          echo "Checking frontend files..."
+          ls -la frontend/ || echo "frontend directory not found"
+          ls -la frontend/dist/ | head -10 || echo "dist not found"
+          test -f frontend/nginx.conf && echo "nginx.conf exists" || echo "nginx.conf NOT found"
+          
+          echo "Creating archive..."
           cd frontend
           tar -czf /tmp/frontend-deploy.tar.gz dist nginx.conf
           cd ..
-          cat /tmp/Dockerfile.prod >> /tmp/frontend-deploy.tar.gz || true
-          # Создаем отдельный архив для Dockerfile
-          cp /tmp/Dockerfile.prod /tmp/Dockerfile.prod.copy
-          echo "✅ Frontend archive created"
-          ls -lh /tmp/frontend-deploy.tar.gz || echo "Archive not created"
-          ls -la frontend/dist | head -5 || echo "dist not found"
+          
+          echo "Verifying archive..."
+          if [ ! -f /tmp/frontend-deploy.tar.gz ]; then
+            echo "❌ Archive was not created!"
+            exit 1
+          fi
+          
+          ARCHIVE_SIZE=$(stat -f%z /tmp/frontend-deploy.tar.gz 2>/dev/null || stat -c%s /tmp/frontend-deploy.tar.gz 2>/dev/null || echo "0")
+          if [ "$ARCHIVE_SIZE" -eq 0 ]; then
+            echo "❌ Archive is empty!"
+            exit 1
+          fi
+          
+          echo "✅ Frontend archive created successfully (size: $ARCHIVE_SIZE bytes)"
+          ls -lh /tmp/frontend-deploy.tar.gz
+          tar -tzf /tmp/frontend-deploy.tar.gz | head -10
 
       - name: Deploy frontend archive
         uses: appleboy/scp-action@v0.1.7
@@ -139,6 +155,7 @@ jobs:
           port: ${{ secrets.SERVER_PORT || '22' }}
           source: "/tmp/frontend-deploy.tar.gz"
           target: "/tmp"
+          debug: true
 
       - name: Extract frontend on server
         uses: appleboy/ssh-action@v1.0.3
