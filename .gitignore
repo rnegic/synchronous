@@ -2,6 +2,9 @@
 # Исключаем только секреты, если они есть
 # .github/secrets/
 
+# Exclude instruction files
+.github/instructions/
+
 docs/
 nginx/
 deploy/
