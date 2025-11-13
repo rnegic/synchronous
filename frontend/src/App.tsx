@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
 import { AppRouter } from '@/app/providers/RouterProvider';
 import { useAuth } from '@/app/store';
 import { useMaxWebApp } from '@/shared/hooks/useMaxWebApp';
@@ -15,7 +14,6 @@ import './App.css';
  * User doesn't need to interact - login happens automatically
  */
 function App() {
-  const navigate = useNavigate();
   const { login, isAuthenticated, isLoading: authLoading } = useAuth();
   const { initData, user, isReady, webApp } = useMaxWebApp();
   const [isInitializing, setIsInitializing] = useState(true);
@@ -79,8 +77,8 @@ function App() {
             const response = await sessionsApi.joinByInviteLink(inviteLink);
             console.log('[App] ✅ Successfully joined session by invite link:', response.session.id);
             message.success('Вы присоединились к сессии!');
-            // Перенаправляем в лобби сессии
-            navigate(`/lobby/${response.session.id}`);
+            // Перенаправляем в лобби сессии используя window.location (Router еще не инициализирован)
+            window.location.href = `/lobby/${response.session.id}`;
           } catch (error) {
             console.error('[App] ❌ Failed to join session by invite link:', error);
             // Не показываем ошибку пользователю, просто продолжаем работу
