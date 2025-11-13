@@ -76,10 +76,9 @@
 .timer__btn-pause:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
-  background: var(--color-primary) !important;
 }
 
-.timer__btn-stop {
+/* .timer__btn-stop {
   flex: 1;
   height: 56px !important;
   border-radius: var(--radius-lg) !important;
@@ -96,7 +95,7 @@
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
   background: #ff4d4f !important;
-}
+} */
 
 .timer__circle .ant-progress-text {
   display: flex;
