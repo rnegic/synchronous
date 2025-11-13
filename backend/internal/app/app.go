@@ -96,6 +96,7 @@ func (a *App) Run() error {
 	userHandler := v1.NewUserHandler(baseHandler, userService)
 	wsHandler := v1.NewWebSocketHandler(baseHandler)
 	sessionHandler := v1.NewSessionHandler(baseHandler, sessionService, messageService, leaderboardService, wsHandler)
+	webhookHandler := v1.NewWebhookHandler(baseHandler, sessionService)
 
 	// Инициализация роутера на gin
 	appRouter := router.New()
@@ -113,6 +114,7 @@ func (a *App) Run() error {
 	{
 		// Публичные routes (без аутентификации)
 		authHandler.RegisterRoutes(api)
+		webhookHandler.RegisterRoutes(api) // Webhook должен быть публичным
 
 		// Защищенные routes (с аутентификацией)
 		protected := api.Group("")

@@ -115,14 +115,23 @@ export function SessionReportPage() {
           setLeaderboard(leaderboardResponse.leaderboard);
         }
 
-        // Load chat messages (для всех типов сессий)
-        try {
-          const messagesResponse = await messagesApi.getMessages(sessionId);
-          setMessages(messagesResponse.messages);
-        } catch (error) {
-          console.error('[SessionReport] Failed to load messages:', error);
-          // Не критично, продолжаем работу
-        }
+          // Load chat messages (для всех типов сессий)
+          try {
+            const messagesResponse = await messagesApi.getMessages(sessionId);
+            setMessages(messagesResponse.messages);
+          } catch (error) {
+            console.error('[SessionReport] Failed to load messages:', error);
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            
+            // Если чат не создан, это нормально - показываем пустой чат
+            if (errorMessage.includes('chat not created')) {
+              console.log('[SessionReport] Chat not created yet, showing empty chat');
+              setMessages([]);
+            } else {
+              // Другие ошибки - логируем, но продолжаем работу
+              console.warn('[SessionReport] Error loading messages, but continuing:', errorMessage);
+            }
+          }
       } catch (error) {
         console.error('[SessionReport] Failed to load report:', error);
         message.error('Не удалось загрузить отчёт сессии');
@@ -169,10 +178,37 @@ export function SessionReportPage() {
     navigate('/');
   };
 
-  const handleSendMessage = (text: string) => {
-    console.log('[SessionReport] Send message:', text);
-    // TODO: Will be implemented in next iteration with messagesApi.sendMessage()
-    message.info('Отправка сообщений будет доступна в следующей версии');
+  const handleSendMessage = async (text: string) => {
+    if (!sessionId) {
+      message.error('Ошибка: не найден ID сессии');
+      return;
+    }
+
+    try {
+      console.log('[SessionReport] Sending message:', text);
+      const response = await messagesApi.sendMessage(sessionId, text);
+      console.log('[SessionReport] Message sent successfully:', response);
+      
+      // Добавляем отправленное сообщение в список (оптимистичное обновление)
+      const newMessage: Message = {
+        id: response.message.id,
+        userId: response.message.userId,
+        userName: response.message.userName,
+        avatarUrl: response.message.avatarUrl,
+        text: response.message.text,
+        createdAt: response.message.createdAt,
+      };
+      setMessages((prev) => [...prev, newMessage]);
+    } catch (error) {
+      console.error('[SessionReport] Failed to send message:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      if (errorMessage.includes('chat not created')) {
+        message.error('Чат еще не создан. Дождитесь завершения сессии и создания чата для обсуждения.');
+      } else {
+        message.error(`Не удалось отправить сообщение: ${errorMessage}`);
+      }
+    }
   };
 
   const handleUpgrade = () => {
