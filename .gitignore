@@ -1,4 +1,7 @@
-.github/
+# .github/ - убрано, чтобы workflows были в репозитории
+# Исключаем только секреты, если они есть
+# .github/secrets/
+
 docs/
 nginx/
 deploy/

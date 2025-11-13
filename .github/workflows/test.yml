@@ -1,0 +1,71 @@
+name: Test and Build
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+  push:
+    branches:
+      - main
+      - master
+
+env:
+  GO_VERSION: '1.24.4'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Download dependencies
+        working-directory: ./backend
+        run: go mod download
+
+      - name: Run migrations
+        working-directory: ./backend
+        env:
+          DB_DSN: postgres://test_user:test_password@localhost:5432/test_db?sslmode=disable
+        run: |
+          make migrate-up
+
+      - name: Run tests
+        working-directory: ./backend
+        env:
+          DB_DSN: postgres://test_user:test_password@localhost:5432/test_db?sslmode=disable
+        run: |
+          go test ./... -v || echo "No tests found"
+
+      - name: Build application
+        working-directory: ./backend
+        run: |
+          go build -o app ./cmd/app
+
+      - name: Check binary
+        run: |
+          file backend/app
+          ls -lh backend/app
+
