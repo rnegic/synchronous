@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useNavigate } from 'react-router';
 import { Progress, Button, Modal } from 'antd';
 import { PlayCircleOutlined, PauseCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { useAppDispatch, useAppSelector } from '@/shared/hooks/redux';
@@ -8,6 +9,7 @@ import {
   selectIsRunning,
   selectPhase,
   selectCurrentCycle,
+  selectSessionId,
 } from '@/entities/session/model/activeSessionSelectors';
 import {
   tick,
@@ -22,6 +24,7 @@ import './Timer.css';
 
 export const Timer = () => {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const { isMaxEnvironment } = useMaxWebApp();
   
   const formattedTime = useAppSelector(selectFormattedTime);
@@ -29,6 +32,7 @@ export const Timer = () => {
   const isRunning = useAppSelector(selectIsRunning);
   const phase = useAppSelector(selectPhase);
   const currentCycle = useAppSelector(selectCurrentCycle);
+  const sessionId = useAppSelector(selectSessionId);
   
   // Timer tick effect
   useEffect(() => {
@@ -69,6 +73,16 @@ export const Timer = () => {
           await dispatch(completeSessionAsync({ isMaxEnvironment })).unwrap();
           console.log('[Timer] Session completed successfully');
           message.success('Сессия завершена! 🎉');
+          
+          // Явный редирект на страницу отчета
+          if (sessionId) {
+            setTimeout(() => {
+              navigate(`/session-report/${sessionId}`);
+            }, 500);
+          } else {
+            console.error('[Timer] No sessionId for redirect');
+            message.error('Ошибка: не найден ID сессии');
+          }
         } catch (error) {
           console.error('[Timer] Failed to complete session:', error);
           message.error(`Ошибка завершения: ${getErrorMessage(error)}`);
