@@ -1,7 +1,7 @@
 import { Drawer, message } from 'antd';
 import { useNavigate } from 'react-router';
 import { useAppDispatch } from '@/shared/hooks/redux';
-import { startSession } from '@/entities/session/model/activeSessionSlice';
+import { startSession, setInviteLink } from '@/entities/session/model/activeSessionSlice';
 import { SessionSetupForm } from '@/features/session-create';
 import { sessionsApi, getErrorMessage } from '@/shared/api';
 import { useMaxWebApp } from '@/shared/hooks/useMaxWebApp';
@@ -57,6 +57,9 @@ export function SessionSetupPage() {
             createdAt: task.createdAt,
           })),
         }));
+        if (session.inviteLink) {
+          dispatch(setInviteLink(session.inviteLink));
+        }
         
         // Navigate based on mode
         if (session.mode === 'solo') {

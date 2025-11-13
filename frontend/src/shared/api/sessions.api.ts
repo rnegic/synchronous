@@ -13,6 +13,7 @@ import type {
   SessionStartResponse,
   SessionReportResponse,
   ChatInfoResponse,
+  SessionStatusUpdateResponse,
 } from './types';
 
 // ============================================================================
@@ -125,16 +126,18 @@ export const startSession = async (
  * Pause active session
  * @param sessionId - Session UUID
  */
-export const pauseSession = async (sessionId: string): Promise<void> => {
-  await apiClient.post(`/sessions/${sessionId}/pause`);
+export const pauseSession = async (sessionId: string): Promise<SessionStatusUpdateResponse> => {
+  const response = await apiClient.post<SessionStatusUpdateResponse>(`/sessions/${sessionId}/pause`);
+  return response.data;
 };
 
 /**
  * Resume paused session
  * @param sessionId - Session UUID
  */
-export const resumeSession = async (sessionId: string): Promise<void> => {
-  await apiClient.post(`/sessions/${sessionId}/resume`);
+export const resumeSession = async (sessionId: string): Promise<SessionStatusUpdateResponse> => {
+  const response = await apiClient.post<SessionStatusUpdateResponse>(`/sessions/${sessionId}/resume`);
+  return response.data;
 };
 
 /**

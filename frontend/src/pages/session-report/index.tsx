@@ -60,12 +60,13 @@ export function SessionReportPage() {
     }
 
     const loadReportData = async () => {
+      // Dev mode: skip API calls, use local Redux state
       if (!isMaxEnvironment) {
-        // Use fallback data for dev mode
         setIsLoading(false);
         return;
       }
 
+      // Production: load report data from API
       try {
         // Load session report
         const reportResponse = await sessionsApi.completeSession(sessionId);

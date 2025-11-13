@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 CREATE TYPE session_mode AS ENUM ('solo', 'group');
-CREATE TYPE session_status AS ENUM ('pending', 'active', 'completed', 'cancelled');
+CREATE TYPE session_status AS ENUM ('pending', 'active', 'paused', 'completed', 'cancelled');
 
 CREATE TABLE IF NOT EXISTS sessions (
     id VARCHAR(36) PRIMARY KEY,

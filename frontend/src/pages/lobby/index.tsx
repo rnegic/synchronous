@@ -45,8 +45,8 @@ export function LobbyPage() {
     }
 
     const loadSession = async () => {
+      // Dev mode: use mock data
       if (!isMaxEnvironment) {
-        // Mock data for dev mode
         setParticipants([
           { userId: '1', userName: 'Давид', avatarUrl: '', isReady: true, joinedAt: new Date().toISOString() },
           { userId: '2', userName: 'Мария', avatarUrl: '', isReady: true, joinedAt: new Date().toISOString() },
@@ -56,6 +56,7 @@ export function LobbyPage() {
         return;
       }
 
+      // Production: load real data from API
       try {
         const response = await sessionsApi.getSessionById(sessionId);
         setSession(response.session);
@@ -66,6 +67,21 @@ export function LobbyPage() {
           (p: SessionParticipant) => p.userId === user?.id
         );
         setIsReady(currentUserParticipant?.isReady ?? false);
+
+        // Auto-join if user is not in participants and session is pending
+        if (
+          user?.id &&
+          response.session.status === 'pending' &&
+          !response.session.participants.some((p) => p.userId === user.id)
+        ) {
+          try {
+            const joinRes = await sessionsApi.joinSession(sessionId);
+            setSession(joinRes.session);
+            setParticipants(joinRes.session.participants);
+          } catch (joinErr) {
+            console.error('[LobbyPage] Failed to join session:', joinErr);
+          }
+        }
       } catch (error) {
         console.error('[LobbyPage] Failed to load session:', error);
         message.error(`Ошибка загрузки сессии: ${getErrorMessage(error)}`);
@@ -117,11 +133,16 @@ export function LobbyPage() {
     }
   }, [sessionId, navigate]));
 
-  const allReady = participants.every(p => p.isReady);
+  // Check if all participants (except creator) are ready
+  const nonCreatorParticipants = participants.filter(p => p.userId !== session?.creatorId);
+  const allReady = nonCreatorParticipants.length === 0 || nonCreatorParticipants.every(p => p.isReady);
   
   // Get bot username from environment or use default
-  const botUsername = import.meta.env.VITE_MAX_BOT_USERNAME || 'synchronous';
-  const inviteLink = session?.inviteLink || `https://max.ru/${botUsername}?startapp=session_${sessionId}`;
+  const botBaseUrl = import.meta.env.VITE_MAX_BOT_URL || `https://max.ru/${import.meta.env.VITE_MAX_BOT_USERNAME || 't71_hakaton_bot'}?startapp=`;
+  // inviteLink from backend already contains the full code (e.g., 'invite_abc123')
+  const inviteLink = session?.inviteLink
+    ? `${botBaseUrl}${session.inviteLink}`
+    : `${botBaseUrl}`;
 
   useEffect(() => {
     // Redirect if no active session
@@ -133,17 +154,6 @@ export function LobbyPage() {
   const handleCopyLink = () => {
     navigator.clipboard.writeText(inviteLink);
     message.success('Ссылка скопирована!');
-  };
-
-  const handleShareLink = () => {
-    if (isMaxEnvironment && window.WebApp) {
-      // Use MAX openMaxLink to open link inside MAX app
-      const shareUrl = `https://max.ru/${botUsername}?startapp=session_${sessionId}`;
-      window.WebApp.openMaxLink(shareUrl);
-    } else {
-      // Fallback to copy
-      handleCopyLink();
-    }
   };
 
   const handleToggleReady = async () => {
@@ -192,7 +202,7 @@ export function LobbyPage() {
         <Card className="lobby-page__info-card">
           <div className="lobby-page__header">
             <Title level={3} className="lobby-page__title">
-              {groupName || 'Групповая сессия'}
+              {session?.groupName || groupName || 'Групповая сессия'}
             </Title>
             <Text type="secondary">
               {isPrivate ? '🔒 Приватная' : '🌐 Открытая'}
@@ -259,12 +269,12 @@ export function LobbyPage() {
           <div className="lobby-page__invite-actions">
             <Button
               icon={<CopyOutlined />}
-              onClick={handleShareLink}
+              onClick={handleCopyLink}
               type="primary"
               size="large"
               block
             >
-              {isMaxEnvironment ? 'Пригласить' : 'Копировать ссылку'}
+              Копировать ссылку
             </Button>
           </div>
         </Card>

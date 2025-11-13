@@ -21,14 +21,15 @@ export function HomePage() {
   // Fetch active public sessions
   useEffect(() => {
     const fetchActiveSessions = async () => {
+      // Dev mode: use mock data immediately
       if (!isMaxEnvironment) {
-        // Use mock data for dev mode
         console.log('[HomePage] Using mock data');
         setActiveSessions(mockSessions);
         setIsLoading(false);
         return;
       }
 
+      // Production: load real data from API
       try {
         const response = await sessionsApi.getPublicSessions(1, 10);
         
@@ -59,8 +60,8 @@ export function HomePage() {
       } catch (error) {
         console.error('[HomePage] Failed to load sessions:', error);
         message.error('Не удалось загрузить список сессий');
-        // Fallback to mock data on error
-        setActiveSessions(mockSessions);
+        // Show empty list on error
+        setActiveSessions([]);
       } finally {
         setIsLoading(false);
       }

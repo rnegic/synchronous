@@ -1,14 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { message } from 'antd';
 import { useAppDispatch, useAppSelector } from '@/shared/hooks/redux';
 import { ProgressTracker } from '@/widgets/progress-tracker/ui';
 import { Timer } from '@/widgets/timer/ui';
 import { TaskList } from '@/features/task-list/ui';
-import { InviteFriends } from '@/features/invite-friends/ui';
 import {
   selectSessionId,
-  selectIsGroupMode,
   selectIsCompleted,
 } from '@/entities/session/model/activeSessionSelectors';
 import {
@@ -18,10 +16,10 @@ import {
   selectFocusDuration,
   selectBreakDuration,
 } from '@/entities/session/model/selectors';
-import { startSession, addParticipant } from '@/entities/session/model/activeSessionSlice';
+import { startSession } from '@/entities/session/model/activeSessionSlice';
 import { sessionsApi, getErrorMessage } from '@/shared/api';
 import { useMaxWebApp } from '@/shared/hooks/useMaxWebApp';
-import type { User, Task } from '@/shared/types';
+import type { Task } from '@/shared/types';
 import './styles.css';
 
 export function FocusSessionPage() {
@@ -29,8 +27,6 @@ export function FocusSessionPage() {
   const navigate = useNavigate();
   const { sessionId: routeSessionId } = useParams<{ sessionId: string }>();
   const { isMaxEnvironment } = useMaxWebApp();
-  //@ts-expect-error
-  const [isLoadingSession, setIsLoadingSession] = useState(false);
   
   // Session setup state
   const setupTasks = useAppSelector(selectTasks);
@@ -41,7 +37,6 @@ export function FocusSessionPage() {
   
   // Active session state
   const reduxSessionId = useAppSelector(selectSessionId);
-  const isGroupMode = useAppSelector(selectIsGroupMode);
   const isCompleted = useAppSelector(selectIsCompleted);
   
   const sessionId = routeSessionId || reduxSessionId;
@@ -50,7 +45,6 @@ export function FocusSessionPage() {
   useEffect(() => {
     if (routeSessionId && isMaxEnvironment && !reduxSessionId) {
       const loadSession = async () => {
-        setIsLoadingSession(true);
         try {
           const response = await sessionsApi.getSessionById(routeSessionId);
           const { session } = response;
@@ -73,8 +67,6 @@ export function FocusSessionPage() {
           console.error('[FocusSession] Failed to load session:', error);
           message.error(`Ошибка загрузки сессии: ${getErrorMessage(error)}`);
           navigate('/');
-        } finally {
-          setIsLoadingSession(false);
         }
       };
       
@@ -108,16 +100,20 @@ export function FocusSessionPage() {
     }
   }, [sessionId, setupTasks, mode, groupName, focusDuration, breakDuration, dispatch]);
   
+  // Auto-start session on mount for real backend sessions
+  useEffect(() => {
+    if (sessionId && reduxSessionId && isMaxEnvironment) {
+      // Auto-start the session timer when entering focus screen
+      import('@/entities/session/model/activeSessionSlice').then(({ startSessionAsync }) => {
+        dispatch(startSessionAsync());
+      });
+    }
+  }, [sessionId, reduxSessionId, isMaxEnvironment, dispatch]);
+  
   // Redirect to report when session is completed
   useEffect(() => {
     if (isCompleted && sessionId) {
       message.success('Сессия завершена! Отличная работа! 🎉');
-      
-      // Complete session on backend
-      sessionsApi.completeSession(sessionId).catch(error => {
-        console.error('[FocusSession] Failed to complete session:', error);
-        // Continue to report even if API fails
-      });
       
       setTimeout(() => {
         navigate(`/session-report/${sessionId}`);
@@ -133,12 +129,6 @@ export function FocusSessionPage() {
     return null;
   }
   
-  const handleInviteFriends = (users: User[]) => {
-    users.forEach(user => {
-      dispatch(addParticipant(user));
-    });
-  };
-  
   return (
     <div className="focus-session-page">
       <div className="focus-session-page__container">
@@ -150,12 +140,6 @@ export function FocusSessionPage() {
         
         <div className="focus-session-page__bottom">
           <TaskList />
-          
-          {isGroupMode && (
-            <div className="focus-session-page__invite">
-              <InviteFriends onInvite={handleInviteFriends} />
-            </div>
-          )}
         </div>
       </div>
     </div>

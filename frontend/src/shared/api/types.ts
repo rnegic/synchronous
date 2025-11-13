@@ -53,7 +53,7 @@ export interface Contact {
 // ============================================================================
 
 export type SessionMode = 'solo' | 'group';
-export type SessionStatus = 'pending' | 'active' | 'completed';
+export type SessionStatus = 'pending' | 'active' | 'paused' | 'completed';
 
 export interface Task {
   id: string;
@@ -229,6 +229,13 @@ export interface SessionStartResponse {
     id: string;
     status: string;
     startedAt: string;
+  };
+}
+
+export interface SessionStatusUpdateResponse {
+  session: {
+    id: string;
+    status: SessionStatus;
   };
 }
 
