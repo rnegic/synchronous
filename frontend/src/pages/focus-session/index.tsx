@@ -49,6 +49,7 @@ export function FocusSessionPage() {
   // Track participant progress for group sessions
   const [participantsProgress, setParticipantsProgress] = useState<ParticipantProgress[]>([]);
   const [isLoadingProgress, setIsLoadingProgress] = useState(false);
+  const isInitialLoadRef = useRef(true); // Track if this is first load
   
   // Use ref to prevent unnecessary re-renders from comparison
   const progressRef = useRef<ParticipantProgress[]>([]);
@@ -149,7 +150,12 @@ export function FocusSessionPage() {
     }
 
     const loadProgress = async () => {
-      setIsLoadingProgress(true);
+      // Show loader only on initial load, not on subsequent polls
+      const isInitial = isInitialLoadRef.current;
+      if (isInitial) {
+        setIsLoadingProgress(true);
+      }
+      
       try {
         const response = await sessionsApi.getParticipantsProgress(sessionId);
         
@@ -162,7 +168,10 @@ export function FocusSessionPage() {
       } catch (error) {
         console.error('[FocusSession] Failed to load participants progress:', error);
       } finally {
-        setIsLoadingProgress(false);
+        if (isInitial) {
+          setIsLoadingProgress(false);
+          isInitialLoadRef.current = false;
+        }
       }
     };
 
@@ -177,22 +186,21 @@ export function FocusSessionPage() {
   useWebSocketEvent<{ sessionId: string; userId: string; taskId: string; completed: boolean }>(
     'task_updated',
     useCallback((data) => {
-      if (data.sessionId === sessionId && isGroupMode) {
-        // Reload progress when any participant completes a task
-        if (isMaxEnvironment) {
-          sessionsApi.getParticipantsProgress(sessionId)
-            .then(response => {
-              if (!areProgressEqual(progressRef.current, response.progress)) {
-                progressRef.current = response.progress;
-                setParticipantsProgress(response.progress);
-              }
-            })
-            .catch(error => {
-              console.error('[FocusSession] Failed to update progress:', error);
-            });
-        }
+      if (data.sessionId === sessionId && isGroupMode && isMaxEnvironment) {
+        // Reload progress when any participant completes a task (no loader - seamless update)
+        sessionsApi.getParticipantsProgress(sessionId)
+          .then(response => {
+            if (!areProgressEqual(progressRef.current, response.progress)) {
+              console.log('[FocusSession] Progress updated via WebSocket:', response.progress);
+              progressRef.current = response.progress;
+              setParticipantsProgress(response.progress);
+            }
+          })
+          .catch(error => {
+            console.error('[FocusSession] Failed to update progress:', error);
+          });
       }
-    }, [sessionId, isGroupMode, isMaxEnvironment])
+    }, [sessionId, isGroupMode, isMaxEnvironment, areProgressEqual])
   );
   
   // Redirect to report when session is completed
