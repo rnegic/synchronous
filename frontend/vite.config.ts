@@ -16,4 +16,17 @@ export default defineConfig({
       '@/shared': path.resolve(__dirname, './src/shared'),
     },
   },
+  build: {
+    // Включаем хеширование имен файлов для кеширования
+    rollupOptions: {
+      output: {
+        // Хеши в именах файлов для cache busting
+        entryFileNames: 'assets/[name].[hash].js',
+        chunkFileNames: 'assets/[name].[hash].js',
+        assetFileNames: 'assets/[name].[hash].[ext]',
+      },
+    },
+    // Увеличиваем размер предупреждения для больших бандлов
+    chunkSizeWarningLimit: 1000,
+  },
 })

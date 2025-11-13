@@ -212,14 +212,26 @@ jobs:
             sudo systemctl restart synchronous
             sudo systemctl status synchronous --no-pager
             
-            # Restart frontend container (if using Docker)
-            cd /opt/synchronous
-            if [ -f docker-compose.yml ]; then
-              echo "Rebuilding frontend container..."
-              cd frontend
-              docker build -t synchronous_frontend:latest .
-              cd ..
-              docker compose up -d frontend
+            # Restart frontend container (force rebuild)
+            cd /opt/synchronous/frontend
+            if [ -f Dockerfile ]; then
+              echo "Stopping old frontend container..."
+              docker stop synchronous_frontend 2>/dev/null || true
+              docker rm synchronous_frontend 2>/dev/null || true
+              
+              echo "Rebuilding frontend container with --no-cache..."
+              docker build --no-cache -t synchronous_frontend:latest .
+              
+              echo "Starting new frontend container..."
+              docker run -d \
+                --name synchronous_frontend \
+                --network synchronous_network \
+                -p 3000:80 \
+                --restart unless-stopped \
+                synchronous_frontend:latest
+              
+              echo "✅ Frontend container restarted"
+              docker ps | grep synchronous_frontend || echo "⚠️ Container not running"
             fi
 
       - name: Health check
