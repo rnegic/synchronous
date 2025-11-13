@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, memo } from 'react';
 import { useNavigate } from 'react-router';
 import { Progress, Button, Modal } from 'antd';
 import { PlayCircleOutlined, PauseCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
@@ -22,7 +22,7 @@ import { useMaxWebApp } from '@/shared/hooks/useMaxWebApp';
 import { message } from 'antd';
 import './Timer.css';
 
-export const Timer = () => {
+const TimerComponent = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { isMaxEnvironment } = useMaxWebApp();
@@ -181,3 +181,5 @@ export const Timer = () => {
     </div>
   );
 };
+
+export const Timer = memo(TimerComponent);

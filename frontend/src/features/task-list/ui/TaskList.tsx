@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Checkbox } from 'antd';
 import { useAppDispatch, useAppSelector } from '@/shared/hooks/redux';
 import { selectSessionTasks } from '@/entities/session/model/activeSessionSelectors';
@@ -5,7 +6,7 @@ import { toggleTaskAsync } from '@/entities/session/model/activeSessionSlice';
 import { useMaxWebApp } from '@/shared/hooks/useMaxWebApp';
 import './TaskList.css';
 
-export const TaskList = () => {
+const TaskListComponent = () => {
   const dispatch = useAppDispatch();
   const { isMaxEnvironment } = useMaxWebApp();
   const tasks = useAppSelector(selectSessionTasks);
@@ -50,3 +51,5 @@ export const TaskList = () => {
     </div>
   );
 };
+
+export const TaskList = memo(TaskListComponent);

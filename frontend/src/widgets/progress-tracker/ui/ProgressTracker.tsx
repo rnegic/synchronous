@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Progress, Avatar, Tooltip } from 'antd';
 import { UserOutlined } from '@ant-design/icons';
 import { useAppSelector } from '@/shared/hooks/redux';
@@ -26,7 +27,7 @@ interface ProgressTrackerProps {
  * Progress tracker showing task completion
  * In group mode, displays individual participant progress with avatars positioned on progress bar
  */
-export const ProgressTracker = ({ participants = [] }: ProgressTrackerProps) => {
+const ProgressTrackerComponent = ({ participants = [] }: ProgressTrackerProps) => {
   const taskProgress = useAppSelector(selectTaskProgress);
   const completedCount = useAppSelector(selectCompletedTasksCount);
   const totalCount = useAppSelector(selectTotalTasksCount);
@@ -100,3 +101,5 @@ export const ProgressTracker = ({ participants = [] }: ProgressTrackerProps) => 
     </div>
   );
 };
+
+export const ProgressTracker = memo(ProgressTrackerComponent);

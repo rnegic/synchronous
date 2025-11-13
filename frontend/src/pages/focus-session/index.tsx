@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { message } from 'antd';
 import { useAppDispatch, useAppSelector } from '@/shared/hooks/redux';
@@ -49,6 +49,24 @@ export function FocusSessionPage() {
   // Track participant progress for group sessions
   const [participantsProgress, setParticipantsProgress] = useState<ParticipantProgress[]>([]);
   const [isLoadingProgress, setIsLoadingProgress] = useState(false);
+  
+  // Use ref to prevent unnecessary re-renders from comparison
+  const progressRef = useRef<ParticipantProgress[]>([]);
+  
+  // Helper: deep comparison for progress data
+  const areProgressEqual = useCallback((a: ParticipantProgress[], b: ParticipantProgress[]): boolean => {
+    if (a.length !== b.length) return false;
+    
+    return a.every((item, index) => {
+      const other = b[index];
+      return (
+        item.userId === other.userId &&
+        item.tasksCompleted === other.tasksCompleted &&
+        item.tasksTotal === other.tasksTotal &&
+        item.progressPercent === other.progressPercent
+      );
+    });
+  }, []);
 
   // Load session from backend if coming from route params
   useEffect(() => {
@@ -136,14 +154,11 @@ export function FocusSessionPage() {
         const response = await sessionsApi.getParticipantsProgress(sessionId);
         
         // Only update if data actually changed (prevent unnecessary re-renders)
-        setParticipantsProgress(prev => {
-          const hasChanged = JSON.stringify(prev) !== JSON.stringify(response.progress);
-          if (hasChanged) {
-            console.log('[FocusSession] Progress updated:', response.progress);
-            return response.progress;
-          }
-          return prev;
-        });
+        if (!areProgressEqual(progressRef.current, response.progress)) {
+          console.log('[FocusSession] Progress updated:', response.progress);
+          progressRef.current = response.progress;
+          setParticipantsProgress(response.progress);
+        }
       } catch (error) {
         console.error('[FocusSession] Failed to load participants progress:', error);
       } finally {
@@ -167,10 +182,10 @@ export function FocusSessionPage() {
         if (isMaxEnvironment) {
           sessionsApi.getParticipantsProgress(sessionId)
             .then(response => {
-              setParticipantsProgress(prev => {
-                const hasChanged = JSON.stringify(prev) !== JSON.stringify(response.progress);
-                return hasChanged ? response.progress : prev;
-              });
+              if (!areProgressEqual(progressRef.current, response.progress)) {
+                progressRef.current = response.progress;
+                setParticipantsProgress(response.progress);
+              }
             })
             .catch(error => {
               console.error('[FocusSession] Failed to update progress:', error);
