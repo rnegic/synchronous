@@ -123,17 +123,28 @@ export const completeSessionAsync = createAsyncThunk<
   async ({ isMaxEnvironment }, { getState }) => {
     const { sessionId } = getState().activeSession;
     
+    console.log('[completeSessionAsync] Starting', { sessionId, isMaxEnvironment });
+    
     if (!sessionId) {
+      console.error('[completeSessionAsync] No sessionId found');
       throw new Error('No active session');
     }
 
     // Only call API in production (MAX environment)
     if (isMaxEnvironment) {
-      await sessionsApi.completeSession(sessionId);
+      console.log('[completeSessionAsync] Calling API to complete session', { sessionId });
+      try {
+        const result = await sessionsApi.completeSession(sessionId);
+        console.log('[completeSessionAsync] API call successful', result);
+      } catch (error) {
+        console.error('[completeSessionAsync] API call failed', error);
+        throw error;
+      }
     } else {
       console.log('[completeSessionAsync] Dev mode - completing locally');
     }
     
+    console.log('[completeSessionAsync] Completed successfully');
     return { completed: true };
   }
 );
