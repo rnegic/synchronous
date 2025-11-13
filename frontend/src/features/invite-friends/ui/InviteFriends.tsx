@@ -1,24 +1,50 @@
-import { useState } from 'react';
-import { Modal, List, Avatar, Button, message, Input } from 'antd';
+import { useEffect, useMemo, useState } from 'react';
+import { Modal, List, Avatar, Button, message, Input, Empty } from 'antd';
 import { UserAddOutlined, SearchOutlined, SendOutlined } from '@ant-design/icons';
-import { mockUsers } from '@/shared/lib/mockData';
-import type { User } from '@/shared/types';
+import { usersApi } from '@/shared/api';
+import type { Contact } from '@/shared/api';
+import { useMaxWebApp } from '@/shared/hooks/useMaxWebApp';
 import './InviteFriends.css';
 
 interface InviteFriendsProps {
-  sessionId?: string; // Optional for now, will be used for API integration
-  onInvite?: (users: User[]) => void;
+  sessionInviteCode?: string; // inviteLink code from backend (8 chars)
+  onInvite?: (userIds: string[]) => void;
 }
 
-export const InviteFriends = ({ onInvite }: InviteFriendsProps) => {
+export const InviteFriends = ({ sessionInviteCode, onInvite }: InviteFriendsProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [loading, setLoading] = useState(false);
+  const { isMaxEnvironment } = useMaxWebApp();
   
-  // Filter contacts based on search query
-  const filteredContacts = mockUsers.filter(user =>
-    user.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const botBaseUrl = import.meta.env.VITE_MAX_BOT_URL || `https://max.ru/${import.meta.env.VITE_MAX_BOT_USERNAME || 't71_hakaton_bot'}?startapp=`;
+  const shareUrl = sessionInviteCode ? `${botBaseUrl}invite_${sessionInviteCode}` : botBaseUrl;
+  
+  // Load contacts when modal opens
+  useEffect(() => {
+    if (!isModalOpen) return;
+    let isMounted = true;
+    setLoading(true);
+    usersApi.getContacts()
+      .then((res) => {
+        if (isMounted) setContacts(res.contacts || []);
+      })
+      .catch(() => {
+        if (isMounted) setContacts([]);
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+    return () => { isMounted = false; };
+  }, [isModalOpen]);
+  
+  const filteredContacts = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return contacts;
+    return contacts.filter(c => c.name.toLowerCase().includes(q));
+  }, [contacts, searchQuery]);
   
   const handleOpenModal = () => {
     setIsModalOpen(true);
@@ -47,14 +73,16 @@ export const InviteFriends = ({ onInvite }: InviteFriendsProps) => {
       message.warning('Выберите хотя бы одного друга');
       return;
     }
-    
-    const invitedUsers = mockUsers.filter(user => selectedUsers.has(user.id));
-    
-    // Simulate sending invite link via Max messenger
-    message.success(`Приглашения отправлены ${selectedUsers.size} ${selectedUsers.size === 1 ? 'другу' : 'друзьям'}`);
-    
-    if (onInvite) {
-      onInvite(invitedUsers);
+    const ids = Array.from(selectedUsers);
+    if (onInvite) onInvite(ids);
+
+    if (isMaxEnvironment && window.WebApp) {
+      // We can't DM contacts from frontend; open bot with payload for user to share further
+      window.WebApp.openMaxLink(shareUrl);
+      message.success('Открываю бота для отправки приглашения');
+    } else {
+      navigator.clipboard.writeText(shareUrl);
+      message.success('Ссылка скопирована в буфер обмена');
     }
     
     handleCloseModal();
@@ -103,48 +131,51 @@ export const InviteFriends = ({ onInvite }: InviteFriendsProps) => {
             className="invite-friends__search"
           />
           
-          <List
-            className="invite-friends__list"
-            dataSource={filteredContacts}
-            locale={{ emptyText: 'Контакты не найдены' }}
-            renderItem={(user) => {
-              const isSelected = selectedUsers.has(user.id);
-              return (
-                <List.Item
-                  className={`invite-friends__list-item ${isSelected ? 'invite-friends__list-item--selected' : ''}`}
-                  onClick={() => toggleUserSelection(user.id)}
-                >
-                  <List.Item.Meta
-                    avatar={
-                      <Avatar
-                        src={user.avatar}
-                        size="large"
-                        style={{
-                          backgroundColor: user.avatar ? undefined : 'var(--color-lavender)',
-                          color: 'var(--color-primary)',
-                        }}
-                      >
-                        {!user.avatar && user.name.charAt(0).toUpperCase()}
-                      </Avatar>
-                    }
-                    title={
-                      <span className="invite-friends__user-name">
-                        {user.name}
-                      </span>
-                    }
-                    description={isSelected && (
-                      <span className="invite-friends__selected-label">
-                        ✓ Выбрано
-                      </span>
-                    )}
-                  />
-                </List.Item>
-              );
-            }}
-          />
+          {loading ? null : filteredContacts.length === 0 ? (
+            <Empty description="Контакты не найдены" />
+          ) : (
+            <List
+              className="invite-friends__list"
+              dataSource={filteredContacts}
+              renderItem={(user) => {
+                const isSelected = selectedUsers.has(user.id);
+                return (
+                  <List.Item
+                    className={`invite-friends__list-item ${isSelected ? 'invite-friends__list-item--selected' : ''}`}
+                    onClick={() => toggleUserSelection(user.id)}
+                  >
+                    <List.Item.Meta
+                      avatar={
+                        <Avatar
+                          src={user.avatarUrl || undefined}
+                          size="large"
+                          style={{
+                            backgroundColor: user.avatarUrl ? undefined : 'var(--color-lavender)',
+                            color: 'var(--color-primary)',
+                          }}
+                        >
+                          {!user.avatarUrl && user.name.charAt(0).toUpperCase()}
+                        </Avatar>
+                      }
+                      title={
+                        <span className="invite-friends__user-name">
+                          {user.name}
+                        </span>
+                      }
+                      description={isSelected && (
+                        <span className="invite-friends__selected-label">
+                          ✓ Выбрано
+                        </span>
+                      )}
+                    />
+                  </List.Item>
+                );
+              }}
+            />
+          )}
           
           <div className="invite-friends__info">
-            <span>💬 Ссылка-приглашение будет отправлена через Max</span>
+            <span>💬 Ссылка-приглашение откроется в Max или скопируется</span>
           </div>
         </div>
       </Modal>

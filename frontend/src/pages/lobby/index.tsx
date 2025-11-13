@@ -66,6 +66,21 @@ export function LobbyPage() {
           (p: SessionParticipant) => p.userId === user?.id
         );
         setIsReady(currentUserParticipant?.isReady ?? false);
+
+        // Auto-join if user is not in participants and session is pending
+        if (
+          user?.id &&
+          response.session.status === 'pending' &&
+          !response.session.participants.some((p) => p.userId === user.id)
+        ) {
+          try {
+            const joinRes = await sessionsApi.joinSession(sessionId);
+            setSession(joinRes.session);
+            setParticipants(joinRes.session.participants);
+          } catch (joinErr) {
+            console.error('[LobbyPage] Failed to join session:', joinErr);
+          }
+        }
       } catch (error) {
         console.error('[LobbyPage] Failed to load session:', error);
         message.error(`Ошибка загрузки сессии: ${getErrorMessage(error)}`);
@@ -120,8 +135,10 @@ export function LobbyPage() {
   const allReady = participants.every(p => p.isReady);
   
   // Get bot username from environment or use default
-  const botUsername = import.meta.env.VITE_MAX_BOT_USERNAME || 'synchronous';
-  const inviteLink = session?.inviteLink || `https://max.ru/${botUsername}?startapp=session_${sessionId}`;
+  const botBaseUrl = import.meta.env.VITE_MAX_BOT_URL || `https://max.ru/${import.meta.env.VITE_MAX_BOT_USERNAME || 't71_hakaton_bot'}?startapp=`;
+  const inviteLink = session?.inviteLink
+    ? `${botBaseUrl}invite_${session.inviteLink}`
+    : `${botBaseUrl}`;
 
   useEffect(() => {
     // Redirect if no active session
@@ -137,11 +154,10 @@ export function LobbyPage() {
 
   const handleShareLink = () => {
     if (isMaxEnvironment && window.WebApp) {
-      // Use MAX openMaxLink to open link inside MAX app
-      const shareUrl = `https://max.ru/${botUsername}?startapp=session_${sessionId}`;
-      window.WebApp.openMaxLink(shareUrl);
+      // Use MAX openMaxLink with invite payload (does not DM, opens bot with payload)
+      window.WebApp.openMaxLink(inviteLink);
     } else {
-      // Fallback to copy
+      // Fallback to copy to clipboard
       handleCopyLink();
     }
   };
@@ -192,7 +208,7 @@ export function LobbyPage() {
         <Card className="lobby-page__info-card">
           <div className="lobby-page__header">
             <Title level={3} className="lobby-page__title">
-              {groupName || 'Групповая сессия'}
+              {session?.groupName || groupName || 'Групповая сессия'}
             </Title>
             <Text type="secondary">
               {isPrivate ? '🔒 Приватная' : '🌐 Открытая'}

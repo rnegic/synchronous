@@ -41,13 +41,19 @@ func (s *SessionService) CreateSession(
 ) (*entity.Session, error) {
 	sessionID := uuid.New().String()
 	inviteLink := uuid.New().String()[:8] // Короткая ссылка
+	// Получаем реальные данные пользователя для корректного отображения имени и аватара
+	creator, err := s.userRepo.GetByID(userID)
+	if err != nil || creator == nil {
+		return nil, fmt.Errorf("failed to load creator: %w", err)
+	}
 
 	participants := []entity.Participant{
 		{
-			UserID:   userID,
-			UserName: "User", // В реальности получаем из репозитория
-			IsReady:  false,
-			JoinedAt: time.Now(),
+			UserID:    userID,
+			UserName:  creator.Name,
+			AvatarURL: creator.AvatarURL,
+			IsReady:   false,
+			JoinedAt:  time.Now(),
 		},
 	}
 
@@ -188,11 +194,18 @@ func (s *SessionService) JoinSession(sessionID string, userID string) (*entity.S
 		return nil, fmt.Errorf("session already started")
 	}
 
+	// Подтягиваем реальные имя и аватар участника
+	user, uerr := s.userRepo.GetByID(userID)
+	if uerr != nil || user == nil {
+		return nil, fmt.Errorf("failed to load user: %w", uerr)
+	}
+
 	participant := &entity.Participant{
-		UserID:   userID,
-		UserName: "User", // В реальности получаем из репозитория
-		IsReady:  false,
-		JoinedAt: time.Now(),
+		UserID:    userID,
+		UserName:  user.Name,
+		AvatarURL: user.AvatarURL,
+		IsReady:   false,
+		JoinedAt:  time.Now(),
 	}
 
 	if err := s.sessionRepo.AddParticipant(sessionID, participant); err != nil {

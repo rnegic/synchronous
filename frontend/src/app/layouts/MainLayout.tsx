@@ -35,7 +35,7 @@ export const MainLayout = () => {
       return {
         variant: 'page' as const,
         pageTitle: 'Шаг 2: Ожидание',
-        onBack: () => navigate('/session-setup'),
+        onBack: () => navigate('/'),
         avatarUrl,
       };
     }

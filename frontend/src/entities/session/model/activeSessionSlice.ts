@@ -55,7 +55,7 @@ const initialState: ActiveSessionState = {
  * Start session on backend (solo mode auto-starts)
  */
 export const startSessionAsync = createAsyncThunk<
-  void,
+  { status: 'active' },
   void,
   { state: { activeSession: ActiveSessionState } }
 >(
@@ -70,7 +70,9 @@ export const startSessionAsync = createAsyncThunk<
     // Solo sessions start immediately, group sessions start when creator clicks start
     if (mode === 'solo') {
       await sessionsApi.startSession(sessionId);
+      return { status: 'active' };
     }
+    return { status: 'active' };
   }
 );
 
@@ -78,7 +80,7 @@ export const startSessionAsync = createAsyncThunk<
  * Toggle pause/resume with backend sync
  */
 export const togglePauseAsync = createAsyncThunk<
-  void,
+  { newStatus: 'running' | 'paused' | 'pending' },
   void,
   { state: { activeSession: ActiveSessionState } }
 >(
@@ -93,15 +95,19 @@ export const togglePauseAsync = createAsyncThunk<
     // Auto-start solo session if not started yet
     if (!isStarted && mode === 'solo') {
       await dispatch(startSessionAsync()).unwrap();
-      return;
+      return { newStatus: 'running' };
     }
 
     // Toggle pause/resume on backend
     if (status === 'running') {
-      await sessionsApi.pauseSession(sessionId);
-    } else if (status === 'paused') {
-      await sessionsApi.resumeSession(sessionId);
+      const res = await sessionsApi.pauseSession(sessionId);
+      return { newStatus: res.session.status === 'paused' ? 'paused' : 'running' };
     }
+    if (status === 'paused') {
+      const res = await sessionsApi.resumeSession(sessionId);
+      return { newStatus: res.session.status === 'active' ? 'running' : 'paused' };
+    }
+    return { newStatus: 'pending' };
   }
 );
 
@@ -109,7 +115,7 @@ export const togglePauseAsync = createAsyncThunk<
  * Complete session on backend
  */
 export const completeSessionAsync = createAsyncThunk<
-  void,
+  { completed: true },
   void,
   { state: { activeSession: ActiveSessionState } }
 >(
@@ -122,6 +128,7 @@ export const completeSessionAsync = createAsyncThunk<
     }
 
     await sessionsApi.completeSession(sessionId);
+    return { completed: true };
   }
 );
 
@@ -237,32 +244,20 @@ const activeSessionSlice = createSlice({
         console.error('[startSessionAsync] Failed:', action.error);
         state.status = 'pending';
       })
-      // Toggle pause
-      .addCase(togglePauseAsync.pending, (state) => {
-        // Optimistically update UI
-        if (state.status === 'pending' && !state.isStarted) {
+      // Toggle pause - set status based on API result (no optimistic flip)
+      .addCase(togglePauseAsync.fulfilled, (state, action) => {
+        const next = action.payload.newStatus;
+        if (next === 'running') {
           state.status = 'running';
-        } else if (state.status === 'running') {
-          state.status = 'paused';
-        } else if (state.status === 'paused') {
-          state.status = 'running';
-        }
-      })
-      .addCase(togglePauseAsync.fulfilled, (state) => {
-        // Mark as started after first toggle
-        if (!state.isStarted) {
           state.isStarted = true;
+        } else if (next === 'paused') {
+          state.status = 'paused';
+          state.isStarted = true;
+        } else if (next === 'pending') {
+          state.status = 'pending';
         }
       })
-      .addCase(togglePauseAsync.rejected, (state, action) => {
-        // Revert optimistic update
-        if (state.status === 'running' && !state.isStarted) {
-          state.status = 'pending';
-        } else if (state.status === 'running') {
-          state.status = 'paused';
-        } else if (state.status === 'paused') {
-          state.status = 'running';
-        }
+      .addCase(togglePauseAsync.rejected, (_state, action) => {
         console.error('[togglePauseAsync] Failed:', action.error);
       })
       // Complete session

@@ -11,6 +11,7 @@ import {
   selectIsGroupMode,
   selectIsCompleted,
 } from '@/entities/session/model/activeSessionSelectors';
+import { selectInviteLink as selectActiveInviteLink } from '@/entities/session/model/activeSessionSelectors';
 import {
   selectTasks,
   selectMode,
@@ -18,10 +19,10 @@ import {
   selectFocusDuration,
   selectBreakDuration,
 } from '@/entities/session/model/selectors';
-import { startSession, addParticipant } from '@/entities/session/model/activeSessionSlice';
+import { startSession } from '@/entities/session/model/activeSessionSlice';
 import { sessionsApi, getErrorMessage } from '@/shared/api';
 import { useMaxWebApp } from '@/shared/hooks/useMaxWebApp';
-import type { User, Task } from '@/shared/types';
+import type { Task } from '@/shared/types';
 import './styles.css';
 
 export function FocusSessionPage() {
@@ -41,6 +42,7 @@ export function FocusSessionPage() {
   const reduxSessionId = useAppSelector(selectSessionId);
   const isGroupMode = useAppSelector(selectIsGroupMode);
   const isCompleted = useAppSelector(selectIsCompleted);
+  const activeInviteCode = useAppSelector(selectActiveInviteLink);
   
   const sessionId = routeSessionId || reduxSessionId;
 
@@ -122,10 +124,8 @@ export function FocusSessionPage() {
     return null;
   }
   
-  const handleInviteFriends = (users: User[]) => {
-    users.forEach(user => {
-      dispatch(addParticipant(user));
-    });
+  const handleInviteFriends = (_userIds: string[]) => {
+    // Backend invitation sending is handled via Max link; no local participant mutation here
   };
   
   return (
@@ -142,7 +142,7 @@ export function FocusSessionPage() {
           
           {isGroupMode && (
             <div className="focus-session-page__invite">
-              <InviteFriends onInvite={handleInviteFriends} />
+              <InviteFriends sessionInviteCode={activeInviteCode || undefined} onInvite={handleInviteFriends} />
             </div>
           )}
         </div>
