@@ -1,4 +1,4 @@
-.PHONY: run migrate-up migrate-down migrate-status migrate-create migrate-reset migrate-fix migrate-version install-goose check-goose migrate-up-docker migrate-status-docker migrate-down-docker migrate-script-docker migrate-up-docker-explicit help
+.PHONY: run migrate-up migrate-down migrate-status migrate-create migrate-reset migrate-fix migrate-version install-goose check-goose migrate-up-docker migrate-status-docker migrate-down-docker migrate-script-docker migrate-up-docker-explicit show-dsn show-dsn-docker help
 
 # Запуск приложения
 run:
@@ -114,6 +114,22 @@ migrate-up-docker-explicit:
 	@cd .. && docker compose run --rm -e DB_DSN="$(DB_DSN)" backend sh -c 'goose -dir migrations postgres "$$DB_DSN" up'
 	@echo "✅ Миграции применены"
 
+# Показать текущий DSN (без пароля)
+show-dsn:
+	@if [ -n "$$DB_DSN" ]; then \
+		echo "📊 Текущий DB_DSN (из переменной окружения):"; \
+		echo "$$DB_DSN" | sed 's/:[^@]*@/:***@/g'; \
+	else \
+		echo "❌ DB_DSN не установлена в переменных окружения"; \
+		echo "💡 Установите: export DB_DSN=\"postgres://user:pass@host:5432/db?sslmode=disable\""; \
+	fi
+
+# Показать DSN из Docker контейнера
+show-dsn-docker:
+	@echo "📊 DB_DSN из Docker контейнера:"
+	@cd .. && docker compose exec backend sh -c 'if [ -n "$$DB_DSN" ]; then echo "$$DB_DSN" | sed "s/:[^@]*@/:***@/g"; else echo "❌ DB_DSN не установлена в контейнере"; fi' 2>/dev/null || \
+		(cd .. && docker compose run --rm backend sh -c 'if [ -n "$$DB_DSN" ]; then echo "$$DB_DSN" | sed "s/:[^@]*@/:***@/g"; else echo "❌ DB_DSN не установлена в контейнере"; fi')
+
 # Справка
 help:
 	@echo "📚 Доступные команды для миграций:"
@@ -134,9 +150,12 @@ help:
 	@echo "  make migrate-down-docker      - Откатить миграцию в контейнере"
 	@echo "  make migrate-script-docker    - Запустить через migrate.sh"
 	@echo "  make migrate-up-docker-explicit DB_DSN=\"...\" - Применить с явным DSN"
+	@echo "  make show-dsn                    - Показать текущий DSN (без пароля)"
+	@echo "  make show-dsn-docker             - Показать DSN из Docker контейнера"
 	@echo ""
 	@echo "Примеры:"
 	@echo "  DB_DSN=\"postgres://user:pass@localhost:5432/db?sslmode=disable\" make migrate-up"
 	@echo "  make migrate-up-docker"
 	@echo "  make migrate-version VERSION=5"
+	@echo "  make show-dsn"
 	@echo ""
