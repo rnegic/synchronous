@@ -51,6 +51,7 @@ export function SessionReportPage() {
   const [leaderboard, setLeaderboard] = useState<ApiLeaderboardEntry[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<string>('chat'); // По умолчанию открываем вкладку "Чат"
 
   // Load session report data
   useEffect(() => {
@@ -68,18 +69,54 @@ export function SessionReportPage() {
 
       // Production: load report data from API
       try {
-        // Load session report
-        const reportResponse = await sessionsApi.completeSession(sessionId);
-        setReport(reportResponse.report);
+        // Сначала получаем информацию о сессии, чтобы проверить статус
+        const sessionResponse = await sessionsApi.getSessionById(sessionId);
+        const session = sessionResponse.session;
+        
+        // Если сессия уже завершена, получаем отчет из данных сессии
+        // Если нет - завершаем сессию
+        let reportData: SessionReport;
+        if (session.status === 'completed') {
+          // Сессия уже завершена, формируем отчет из данных сессии
+          const completedTasks = session.tasks.filter(t => t.completed).length;
+          const cycles = currentCycle || 1; // Используем currentCycle из Redux
+          reportData = {
+            sessionId: session.id,
+            tasksCompleted: completedTasks,
+            tasksTotal: session.tasks.length,
+            focusTime: session.focusDuration * cycles,
+            breakTime: session.breakDuration * cycles,
+            cyclesCompleted: cycles,
+            completedAt: session.completedAt || new Date().toISOString(),
+            participants: session.participants.map(p => ({
+              userId: p.userId,
+              userName: p.userName,
+              avatarUrl: p.avatarUrl,
+              tasksCompleted: 0, // TODO: получить из статистики
+              focusTime: 0, // TODO: получить из статистики
+            })),
+          };
+        } else {
+          // Сессия еще не завершена, завершаем её
+          const reportResponse = await sessionsApi.completeSession(sessionId);
+          reportData = reportResponse.report;
+        }
+        
+        setReport(reportData);
 
         // Load session leaderboard (for group sessions)
         if (isGroupMode) {
           const leaderboardResponse = await leaderboardApi.getSessionLeaderboard(sessionId);
           setLeaderboard(leaderboardResponse.leaderboard);
+        }
 
-          // Load chat messages
+        // Load chat messages (для всех типов сессий)
+        try {
           const messagesResponse = await messagesApi.getMessages(sessionId);
           setMessages(messagesResponse.messages);
+        } catch (error) {
+          console.error('[SessionReport] Failed to load messages:', error);
+          // Не критично, продолжаем работу
         }
       } catch (error) {
         console.error('[SessionReport] Failed to load report:', error);
@@ -148,11 +185,6 @@ export function SessionReportPage() {
 
   const tabItems = [
     {
-      key: 'leaderboard',
-      label: '🏆 Лидерборд',
-      children: <Leaderboard entries={leaderboardEntries} />,
-    },
-    {
       key: 'chat',
       label: '💬 Чат',
       children: (
@@ -164,6 +196,15 @@ export function SessionReportPage() {
       ),
     },
   ];
+
+  // Добавляем вкладку лидерборда только для групповых сессий
+  if (isGroupMode && leaderboardEntries.length > 0) {
+    tabItems.unshift({
+      key: 'leaderboard',
+      label: '🏆 Лидерборд',
+      children: <Leaderboard entries={leaderboardEntries} />,
+    });
+  }
 
   return (
     <div className="session-report-page">
@@ -177,17 +218,17 @@ export function SessionReportPage() {
           cyclesCompleted={currentCycle}
         />
 
-        {/* Group Session Tabs */}
-        {isGroupMode && (
-          <div className="session-report-page__tabs">
-            <Tabs
-              defaultActiveKey="leaderboard"
-              items={tabItems}
-              size="large"
-              className="session-report-page__tabs-component"
-            />
-          </div>
-        )}
+        {/* Session Tabs (Chat always available, Leaderboard for group sessions) */}
+        <div className="session-report-page__tabs">
+          <Tabs
+            activeKey={activeTab}
+            onChange={setActiveTab}
+            defaultActiveKey="chat"
+            items={tabItems}
+            size="large"
+            className="session-report-page__tabs-component"
+          />
+        </div>
 
         {/* AI Report Teaser */}
         <AIReportTeaser onUpgrade={handleUpgrade} />
