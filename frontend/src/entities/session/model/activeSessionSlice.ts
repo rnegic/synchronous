@@ -116,18 +116,24 @@ export const togglePauseAsync = createAsyncThunk<
  */
 export const completeSessionAsync = createAsyncThunk<
   { completed: true },
-  void,
+  { isMaxEnvironment: boolean },
   { state: { activeSession: ActiveSessionState } }
 >(
   'activeSession/completeSessionAsync',
-  async (_, { getState }) => {
+  async ({ isMaxEnvironment }, { getState }) => {
     const { sessionId } = getState().activeSession;
     
     if (!sessionId) {
       throw new Error('No active session');
     }
 
-    await sessionsApi.completeSession(sessionId);
+    // Only call API in production (MAX environment)
+    if (isMaxEnvironment) {
+      await sessionsApi.completeSession(sessionId);
+    } else {
+      console.log('[completeSessionAsync] Dev mode - completing locally');
+    }
+    
     return { completed: true };
   }
 );

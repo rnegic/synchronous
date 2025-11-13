@@ -75,6 +75,7 @@ func (Participant) TableName() string {
 type Task struct {
 	ID          string         `gorm:"type:varchar(36);primaryKey" json:"id"`
 	SessionID   string         `gorm:"type:varchar(36);not null;index:idx_session_id" json:"sessionId"`
+	UserID      *string        `gorm:"type:varchar(255);index:idx_user_id" json:"userId,omitempty"` // Owner of the task
 	Title       string         `gorm:"type:varchar(500);not null" json:"title"`
 	Completed   bool           `gorm:"not null;default:false;index:idx_completed" json:"completed"`
 	CompletedAt *time.Time     `json:"completedAt"`
@@ -84,6 +85,7 @@ type Task struct {
 
 	// Relations
 	Session *Session `gorm:"foreignKey:SessionID" json:"session,omitempty"`
+	User    *User    `gorm:"foreignKey:UserID" json:"user,omitempty"`
 }
 
 func (Task) TableName() string {

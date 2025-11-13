@@ -16,11 +16,13 @@ import {
   completeSessionAsync,
 } from '@/entities/session/model/activeSessionSlice';
 import { getErrorMessage } from '@/shared/api';
+import { useMaxWebApp } from '@/shared/hooks/useMaxWebApp';
 import { message } from 'antd';
 import './Timer.css';
 
 export const Timer = () => {
   const dispatch = useAppDispatch();
+  const { isMaxEnvironment } = useMaxWebApp();
   
   const formattedTime = useAppSelector(selectFormattedTime);
   const progress = useAppSelector(selectProgress);
@@ -64,8 +66,9 @@ export const Timer = () => {
       okButtonProps: { danger: true },
       onOk: async () => {
         try {
-          await dispatch(completeSessionAsync()).unwrap();
+          await dispatch(completeSessionAsync({ isMaxEnvironment })).unwrap();
           console.log('[Timer] Session completed successfully');
+          message.success('Сессия завершена! 🎉');
         } catch (error) {
           console.error('[Timer] Failed to complete session:', error);
           message.error(`Ошибка завершения: ${getErrorMessage(error)}`);

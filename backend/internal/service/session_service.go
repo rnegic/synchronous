@@ -79,6 +79,7 @@ func (s *SessionService) CreateSession(
 	}
 
 	// Теперь создаем задачи после создания сессии
+	// Привязываем задачи к пользователю (creator) для индивидуального отслеживания
 	tasksList := make([]entity.Task, 0, len(tasks))
 	for _, title := range tasks {
 		task := entity.Task{
@@ -86,6 +87,7 @@ func (s *SessionService) CreateSession(
 			Title:     title,
 			Completed: false,
 			SessionID: sessionID,
+			UserID:    &userID, // Привязка задачи к создателю
 			CreatedAt: time.Now(),
 		}
 		if err := s.taskRepo.Create(&task); err != nil {
@@ -129,8 +131,8 @@ func (s *SessionService) GetSession(sessionID string, userID string) (*entity.Se
 		return nil, fmt.Errorf("access denied")
 	}
 
-	// Загружаем задачи
-	tasks, err := s.taskRepo.GetBySessionID(sessionID)
+	// Загружаем только задачи текущего пользователя (индивидуальные задачи)
+	tasks, err := s.taskRepo.GetBySessionIDAndUserID(sessionID, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tasks: %w", err)
 	}
@@ -605,6 +607,11 @@ func (s *SessionService) UpdateTask(sessionID string, taskID string, userID stri
 		return nil, fmt.Errorf("task does not belong to session")
 	}
 
+	// Проверяем что задача принадлежит текущему пользователю
+	if task.UserID == nil || *task.UserID != userID {
+		return nil, fmt.Errorf("task does not belong to user")
+	}
+
 	task.Completed = completed
 	if completed {
 		now := time.Now()
@@ -626,6 +633,7 @@ func (s *SessionService) AddTask(sessionID string, userID string, title string) 
 		Title:     title,
 		Completed: false,
 		SessionID: sessionID,
+		UserID:    &userID, // Привязка задачи к пользователю
 		CreatedAt: time.Now(),
 	}
 
@@ -644,6 +652,11 @@ func (s *SessionService) DeleteTask(sessionID string, taskID string, userID stri
 
 	if task.SessionID != sessionID {
 		return fmt.Errorf("task does not belong to session")
+	}
+
+	// Проверяем что задача принадлежит текущему пользователю
+	if task.UserID == nil || *task.UserID != userID {
+		return fmt.Errorf("task does not belong to user")
 	}
 
 	return s.taskRepo.Delete(taskID)

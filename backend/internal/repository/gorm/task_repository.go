@@ -39,6 +39,15 @@ func (r *taskRepository) GetBySessionID(sessionID string) ([]*entity.Task, error
 	return tasks, nil
 }
 
+func (r *taskRepository) GetBySessionIDAndUserID(sessionID string, userID string) ([]*entity.Task, error) {
+	var tasks []*entity.Task
+	err := r.db.Where("session_id = ? AND user_id = ?", sessionID, userID).Order("created_at ASC").Find(&tasks).Error
+	if err != nil {
+		return nil, err
+	}
+	return tasks, nil
+}
+
 func (r *taskRepository) Update(task *entity.Task) error {
 	return r.db.Save(task).Error
 }
