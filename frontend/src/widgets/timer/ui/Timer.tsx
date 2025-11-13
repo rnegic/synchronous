@@ -62,6 +62,14 @@ export const Timer = () => {
   };
   
   const handleStop = () => {
+    console.log('[Timer] handleStop called', { sessionId, isMaxEnvironment });
+    
+    if (!sessionId) {
+      console.error('[Timer] No sessionId available');
+      message.error('Ошибка: не найден ID сессии');
+      return;
+    }
+    
     Modal.confirm({
       title: 'Завершить сессию?',
       content: 'Вы уверены, что хотите завершить сессию досрочно? Прогресс будет сохранен.',
@@ -69,24 +77,26 @@ export const Timer = () => {
       cancelText: 'Отмена',
       okButtonProps: { danger: true },
       onOk: async () => {
+        console.log('[Timer] Modal confirmed, starting session completion', { sessionId });
         try {
-          await dispatch(completeSessionAsync({ isMaxEnvironment })).unwrap();
-          console.log('[Timer] Session completed successfully');
+          const result = await dispatch(completeSessionAsync({ isMaxEnvironment })).unwrap();
+          console.log('[Timer] Session completed successfully', result);
           message.success('Сессия завершена! 🎉');
           
           // Явный редирект на страницу отчета
-          if (sessionId) {
-            setTimeout(() => {
-              navigate(`/session-report/${sessionId}`);
-            }, 500);
-          } else {
-            console.error('[Timer] No sessionId for redirect');
-            message.error('Ошибка: не найден ID сессии');
-          }
+          console.log('[Timer] Redirecting to report page', { sessionId });
+          setTimeout(() => {
+            navigate(`/session-report/${sessionId}`);
+          }, 500);
         } catch (error) {
           console.error('[Timer] Failed to complete session:', error);
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          console.error('[Timer] Error details:', { errorMessage, error });
           message.error(`Ошибка завершения: ${getErrorMessage(error)}`);
         }
+      },
+      onCancel: () => {
+        console.log('[Timer] Modal cancelled');
       },
     });
   };
@@ -131,9 +141,15 @@ export const Timer = () => {
         <Button
           size="large"
           icon={<CloseCircleOutlined />}
-          onClick={handleStop}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('[Timer] Stop button clicked');
+            handleStop();
+          }}
           danger
           className="timer__btn-stop"
+          htmlType="button"
         >
           Завершить
         </Button>
