@@ -5,7 +5,7 @@
 
 import { memo, useMemo, useState, useEffect } from 'react';
 import { Card, Button, Avatar, Flex, Typography, Tag } from 'antd';
-import { ClockCircleOutlined, TeamOutlined, RocketOutlined } from '@ant-design/icons';
+import { ClockCircleOutlined, PauseCircleOutlined, TeamOutlined, RocketOutlined } from '@ant-design/icons';
 import type { Session } from '@/shared/types';
 import { formatRemainingTime } from '../lib/formatRemainingTime';
 import './ActiveSessionCard.css';
@@ -26,25 +26,41 @@ export const ActiveSessionCard = memo<ActiveSessionCardProps>(({ session, onJoin
   const [currentTime, setCurrentTime] = useState(Date.now());
 
   useEffect(() => {
+    if (session.status !== 'active') {
+      return;
+    }
+
+    setCurrentTime(Date.now());
+
     const timer = setInterval(() => {
       setCurrentTime(Date.now());
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [session.status]);
 
   const remainingSeconds = useMemo(
     () => {
-      if (!session.startedAt || session.status !== 'active') {
-        return 0;
+      if (session.status !== 'active') {
+        if (typeof session.remainingSeconds === 'number') {
+          return Math.max(session.remainingSeconds, 0);
+        }
+        return session.focusDuration * 60;
+      }
+
+      if (!session.startedAt) {
+        if (typeof session.remainingSeconds === 'number') {
+          return Math.max(session.remainingSeconds, 0);
+        }
+        return session.focusDuration * 60;
       }
 
       const startTime = new Date(session.startedAt).getTime();
       const elapsed = Math.floor((currentTime - startTime) / 1000);
-      
+
       const totalDuration = session.focusDuration * 60;
       const remaining = totalDuration - elapsed;
-      
+
       return remaining > 0 ? remaining : 0;
     },
     [session, currentTime]
@@ -52,6 +68,31 @@ export const ActiveSessionCard = memo<ActiveSessionCardProps>(({ session, onJoin
 
   const remainingTimeText = formatRemainingTime(remainingSeconds);
   const isGroupSession = session.participants.length > 1;
+
+  const statusConfig = {
+    active: {
+      label: 'Активна',
+      color: 'success' as const,
+      icon: <ClockCircleOutlined />,
+    },
+    paused: {
+      label: 'На паузе',
+      color: 'warning' as const,
+      icon: <PauseCircleOutlined />,
+    },
+    pending: {
+      label: 'В ожидании',
+      color: 'processing' as const,
+      icon: <ClockCircleOutlined />,
+    },
+    completed: {
+      label: 'Завершена',
+      color: 'default' as const,
+      icon: <ClockCircleOutlined />,
+    },
+  };
+
+  const tagConfig = statusConfig[session.status] ?? statusConfig.pending;
 
   return (
     <Card
@@ -75,11 +116,11 @@ export const ActiveSessionCard = memo<ActiveSessionCardProps>(({ session, onJoin
             )}
           </div>
           <Tag
-            color="success"
-            icon={<ClockCircleOutlined />}
+            color={tagConfig.color}
+            icon={tagConfig.icon}
             className="active-session-card__status"
           >
-            Активна
+            {tagConfig.label}
           </Tag>
         </Flex>
 

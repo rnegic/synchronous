@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Typography, List, Empty, Flex, Button, Spin, message } from 'antd';
 import { useNavigate } from 'react-router';
 import { RocketOutlined } from '@ant-design/icons';
@@ -9,9 +9,39 @@ import { useMaxWebApp } from '@/shared/hooks/useMaxWebApp';
 import { sessionsApi } from '@/shared/api';
 import type { Session as ApiSession } from '@/shared/api';
 import type { Session, User } from '@/shared/types';
+import { useAppSelector } from '@/shared/hooks/redux';
+import {
+  selectSessionId as selectActiveSessionId,
+  selectStatus as selectActiveSessionStatus,
+  selectRemainingTime as selectActiveSessionRemainingTime,
+} from '@/entities/session/model/activeSessionSelectors';
 import './styles.css';
 
 const { Title, Text } = Typography;
+
+const mapSessionStatus = (status: ApiSession['status']): Session['status'] => {
+  switch (status) {
+    case 'active':
+      return 'active';
+    case 'paused':
+      return 'paused';
+    case 'completed':
+      return 'completed';
+    default:
+      return 'pending';
+  }
+};
+
+const calculateRemainingSeconds = (session: ApiSession): number => {
+  if (!session.startedAt) {
+    return session.focusDuration * 60;
+  }
+
+  const startTime = new Date(session.startedAt).getTime();
+  const elapsed = Math.max(0, Math.floor((Date.now() - startTime) / 1000));
+  const totalDuration = session.focusDuration * 60;
+  return Math.max(totalDuration - elapsed, 0);
+};
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -19,6 +49,9 @@ export function HomePage() {
   const [activeSessions, setActiveSessions] = useState<Session[]>([]);
   const [activeSession, setActiveSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const activeSessionId = useAppSelector(selectActiveSessionId);
+  const activeSessionStatus = useAppSelector(selectActiveSessionStatus);
+  const activeSessionRemainingTime = useAppSelector(selectActiveSessionRemainingTime);
 
   // Fetch user's active session and public sessions
   useEffect(() => {
@@ -62,9 +95,10 @@ export function HomePage() {
             maxParticipants: 10,
             focusDuration: s.focusDuration,
             breakDuration: s.breakDuration,
-            status: s.status === 'active' ? 'active' : 'waiting',
+            status: mapSessionStatus(s.status),
             createdAt: s.createdAt,
             startedAt: s.startedAt || undefined,
+            remainingSeconds: calculateRemainingSeconds(s),
             tasks: s.tasks,
           });
         }
@@ -85,7 +119,7 @@ export function HomePage() {
             maxParticipants: 10,
             focusDuration: s.focusDuration,
             breakDuration: s.breakDuration,
-            status: s.status === 'active' ? 'active' : 'waiting',
+            status: mapSessionStatus(s.status),
             createdAt: s.createdAt,
             startedAt: s.startedAt || undefined,
             tasks: s.tasks,
@@ -126,6 +160,22 @@ export function HomePage() {
     );
   }
 
+  const resolvedActiveSession = useMemo(() => {
+    if (!activeSession) {
+      return null;
+    }
+
+    if (activeSessionId && activeSession.id === activeSessionId && activeSessionStatus === 'paused') {
+      return {
+        ...activeSession,
+        status: 'paused' as const,
+        remainingSeconds: activeSessionRemainingTime,
+      };
+    }
+
+    return activeSession;
+  }, [activeSession, activeSessionId, activeSessionStatus, activeSessionRemainingTime]);
+
   return (
     <>
       <div className="home-page">
@@ -137,13 +187,13 @@ export function HomePage() {
         </section>
 
         {/* Active session block - only shown when user has active session */}
-        {activeSession && (
+        {resolvedActiveSession && (
           <section className="home-page__section">
             <Title level={2} className="home-page__section-title" style={{ marginBottom: '16px' }}>
               Моя активная сессия
             </Title>
             <ActiveSessionCard
-              session={activeSession}
+              session={resolvedActiveSession}
               onJoin={handleJoinActiveSession}
             />
           </section>
