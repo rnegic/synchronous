@@ -54,6 +54,13 @@ export const routes: RouteObject[] = [
           return { Component: SessionReportPage };
         },
       },
+      {
+        path: '/session-history',
+        lazy: async () => {
+          const { SessionHistoryPage } = await import('@/pages/session-history');
+          return { Component: SessionHistoryPage };
+        },
+      },
     ],
   },
 ];

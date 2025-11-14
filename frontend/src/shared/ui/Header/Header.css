@@ -34,6 +34,22 @@
   align-items: center;
 }
 
+.header__avatar-trigger {
+  cursor: pointer;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+}
+
+.header__avatar-trigger:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 4px;
+}
+
+.header__avatar-trigger:hover {
+  transform: translateY(-2px) scale(1.04);
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02));
+}
+
 .header__back {
   font-size: 20px;
   padding: 8px;

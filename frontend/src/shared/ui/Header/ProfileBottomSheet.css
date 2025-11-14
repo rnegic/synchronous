@@ -1,0 +1,55 @@
+.profile-sheet .ant-drawer-body {
+  background: var(--color-surface);
+}
+
+.profile-sheet__header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.profile-sheet__name {
+  margin: 0 !important;
+  font-weight: 600 !important;
+}
+
+.profile-sheet__subtitle {
+  font-size: 13px;
+}
+
+.profile-sheet__item {
+  padding: 12px 0;
+  cursor: pointer;
+  display: flex;
+  justify-content: center !important;
+  align-items: center;
+  gap: 12px;
+}
+
+.profile-sheet__item + .profile-sheet__item {
+  border-top: 1px solid var(--color-border);
+}
+
+.profile-sheet__item-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--color-background-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: var(--color-primary);
+}
+
+.profile-sheet__item-title {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.profile-sheet__item-description {
+  font-size: 13px;
+}

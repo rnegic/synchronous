@@ -7,6 +7,8 @@ export const MainLayout = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
+  const handleHistoryNavigate = () => navigate('/session-history');
+
   const getPageConfig = () => {
     const path = location.pathname;
 
@@ -19,6 +21,7 @@ export const MainLayout = () => {
         variant: 'home' as const,
         userName,
         avatarUrl,
+        onSessionHistoryNavigate: handleHistoryNavigate,
       };
     }
 
@@ -28,6 +31,7 @@ export const MainLayout = () => {
         pageTitle: 'Шаг 1: Настройка',
         onBack: () => navigate('/'),
         avatarUrl,
+        onSessionHistoryNavigate: handleHistoryNavigate,
       };
     }
 
@@ -37,6 +41,7 @@ export const MainLayout = () => {
         pageTitle: 'Шаг 2: Ожидание',
         onBack: () => navigate('/'),
         avatarUrl,
+        onSessionHistoryNavigate: handleHistoryNavigate,
       };
     }
 
@@ -46,6 +51,7 @@ export const MainLayout = () => {
         pageTitle: 'Шаг 3: Фокус',
         onBack: () => navigate('/'),
         avatarUrl,
+        onSessionHistoryNavigate: handleHistoryNavigate,
       };
     }
 
@@ -55,6 +61,17 @@ export const MainLayout = () => {
         pageTitle: 'Результаты',
         onBack: () => navigate('/'),
         avatarUrl,
+        onSessionHistoryNavigate: handleHistoryNavigate,
+      };
+    }
+
+    if (path.startsWith('/session-history')) {
+      return {
+        variant: 'page' as const,
+        pageTitle: 'История сессий',
+        onBack: () => navigate('/'),
+        avatarUrl,
+        onSessionHistoryNavigate: handleHistoryNavigate,
       };
     }
 
@@ -64,6 +81,7 @@ export const MainLayout = () => {
       pageTitle: 'Назад',
       onBack: () => navigate('/'),
       avatarUrl,
+      onSessionHistoryNavigate: handleHistoryNavigate,
     };
   };
 
