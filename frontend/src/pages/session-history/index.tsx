@@ -155,6 +155,7 @@ export function SessionHistoryPage() {
             dataSource={items}
             rowKey={(item) => item.id}
             split={false}
+            className="session-history__list"
             renderItem={(item) => {
               const statusMeta = statusToTag[item.status];
               return (
@@ -170,11 +171,11 @@ export function SessionHistoryPage() {
                   </div>
 
                   <div className="session-history__item-meta">
-                    <Flex gap={8} align="center">
+                    <Flex gap={8} align="center" className="session-history__meta-block">
                       <ClockCircleOutlined />
                       <Text>{item.duration}</Text>
                     </Flex>
-                    <Flex gap={8} align="center">
+                    <Flex gap={8} align="center" className="session-history__meta-block">
                       <TeamOutlined />
                       <Text>{item.participants} участников</Text>
                     </Flex>

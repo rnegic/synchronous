@@ -161,7 +161,7 @@ const TimerComponent = () => {
             console.log('[Timer] Stop button clicked');
             handleStop();
           }}
-          danger
+          danger={true}
           className="timer__btn-stop"
           htmlType="button"
         >
@@ -176,7 +176,7 @@ const TimerComponent = () => {
         onCancel={handleCancelComplete}
         okText="Да, завершить"
         cancelText="Отмена"
-        okButtonProps={{ danger: true, loading: isCompleting }}
+        okButtonProps={{ danger: true, loading: isCompleting, className: 'timer__modal-confirm' }}
         cancelButtonProps={{ disabled: isCompleting }}
         maskClosable={!isCompleting}
         closable={!isCompleting}
