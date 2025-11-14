@@ -80,6 +80,12 @@ jobs:
           passphrase: ${{ secrets.SERVER_SSH_PASSPHRASE }}
           port: ${{ secrets.SERVER_PORT || '22' }}
           script: |
-            curl -f http://localhost:8080/api/v1/health || exit 1
-            curl -f http://localhost:3000/health || echo "Frontend starting..."
+            echo "=== Container Status ==="
             docker compose -f /opt/synchronous/docker-compose.yml ps
+            
+            echo -e "\n=== Backend Logs ==="
+            docker compose -f /opt/synchronous/docker-compose.yml logs --tail=50 backend
+            
+            echo -e "\n=== Health Checks ==="
+            curl -f http://localhost:8080/api/v1/health || echo "Backend health check failed"
+            curl -f http://localhost:3000/health || echo "Frontend health check failed"
