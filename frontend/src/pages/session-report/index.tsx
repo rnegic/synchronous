@@ -295,14 +295,6 @@ export function SessionReportPage() {
     // TODO: Implement upgrade flow
   };
 
-  if (isLoading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
-        <Spin size="large" />
-      </div>
-    );
-  }
-
   useEffect(() => {
     if (typeof window === 'undefined') {
       return;
@@ -422,6 +414,14 @@ export function SessionReportPage() {
 
     loadRemoteHistory();
   }, [isReady, isMaxEnvironment]);
+
+  if (isLoading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
+        <Spin size="large" />
+      </div>
+    );
+  }
 
   return (
     <div className="session-report-page">
