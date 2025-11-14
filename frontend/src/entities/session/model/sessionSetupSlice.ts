@@ -57,6 +57,13 @@ const sessionSetupSlice = createSlice({
     setBreakDuration: (state, action: PayloadAction<number>) => {
       state.breakDuration = action.payload;
     },
+    hydrateSessionSetup: (state, action: PayloadAction<Partial<Omit<SessionSetupState, 'currentTask'>>>) => {
+      return {
+        ...state,
+        ...action.payload,
+        currentTask: '',
+      };
+    },
     resetSessionSetup: () => initialState,
   },
 });
@@ -71,6 +78,7 @@ export const {
   setFocusDuration,
   setBreakDuration,
   resetSessionSetup,
+  hydrateSessionSetup,
 } = sessionSetupSlice.actions;
 
 export default sessionSetupSlice.reducer;

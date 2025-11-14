@@ -14,9 +14,8 @@
 
 .session-report-page__hero {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: var(--spacing-xl);
-  justify-content: space-between;
   padding: var(--spacing-2xl);
   background: var(--color-surface);
   border-radius: var(--radius-lg);
@@ -25,7 +24,6 @@
 }
 
 .session-report-page__hero-info {
-  flex: 1 1 320px;
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
@@ -37,7 +35,7 @@
   gap: var(--spacing-xs);
   padding: var(--spacing-xs) var(--spacing-sm);
   border-radius: var(--radius-sm);
-  background: var(--color-pastel-mint);
+  background: #eaf6ef;
   color: var(--color-text);
   font-size: 14px;
   font-weight: 600;
@@ -61,21 +59,64 @@
   color: var(--color-text-secondary);
 }
 
-.session-report-page__hero-stats {
-  flex: 1 1 240px;
+.session-report-page__hero-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+}
+
+.session-report-page__progress-card {
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-lg);
+  background: var(--color-neutral-white);
+  border: 1px solid var(--color-border);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.session-report-page__progress-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--spacing-md);
+}
+
+.session-report-page__progress-bar {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--color-border);
+  overflow: hidden;
+}
+
+.session-report-page__progress-bar div {
+  height: 100%;
+  background: linear-gradient(90deg, #7ecf9b, #5ab97f);
+  transition: width 0.3s ease;
+}
+
+.session-report-page__progress-value {
+  display: block;
+  margin-top: var(--spacing-sm);
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.session-report-page__quick-stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: var(--spacing-lg);
 }
 
-.session-report-page__hero-stat {
+.session-report-page__quick-stats > div {
   padding: var(--spacing-lg);
   border-radius: var(--radius-md);
-  background: var(--color-neutral-white);
-  border: 1px solid var(--color-border);
+  border: 1px dashed var(--color-border);
+  background: rgba(90, 185, 127, 0.05);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
+  gap: 4px;
 }
 
 .session-report-page__hero-label {
@@ -86,15 +127,9 @@
 }
 
 .session-report-page__hero-value {
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 700;
   color: var(--color-text);
-}
-
-.session-report-page__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: var(--spacing-2xl);
 }
 
 .session-report-page__insights {
@@ -103,6 +138,123 @@
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-sm);
+}
+
+.session-report-page__history {
+  padding: var(--spacing-2xl);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+}
+
+.session-report-page__history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-lg);
+}
+
+.session-report-page__history-header h3 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.session-report-page__history-header p {
+  margin: var(--spacing-xs) 0 0;
+  color: var(--color-text-secondary);
+}
+
+.session-report-page__history-empty {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.session-report-page__history-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.session-report-page__history-card {
+  padding: var(--spacing-lg);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: rgba(239, 245, 248, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.session-report-page__history-meta {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.session-report-page__history-meta-right {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.session-report-page__history-values {
+  display: flex;
+  justify-content: space-between;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.session-report-page__history-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.session-report-page__trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.session-report-page__trend--up {
+  color: #27ae60;
+}
+
+.session-report-page__trend--down {
+  color: #e74c3c;
+}
+
+.session-report-page__trend--flat {
+  color: var(--color-text-secondary);
+}
+
+.session-report-page__next-actions {
+  padding: var(--spacing-2xl);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--spacing-lg);
+  align-items: center;
+}
+
+.session-report-page__action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
 }
 
 .session-report-page__insights h3 {
@@ -162,5 +314,20 @@
 
   .session-report-page__hero h1 {
     font-size: 26px;
+  }
+
+  .session-report-page__next-actions {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .session-report-page__history-values {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .session-report-page__history-actions {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
