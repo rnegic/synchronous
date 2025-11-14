@@ -152,14 +152,6 @@ export function HomePage() {
     navigate(`/focus-session/${sessionId}`);
   };
 
-  if (isLoading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
-        <Spin size="large" />
-      </div>
-    );
-  }
-
   const resolvedActiveSession = useMemo(() => {
     if (!activeSession) {
       return null;
@@ -175,6 +167,14 @@ export function HomePage() {
 
     return activeSession;
   }, [activeSession, activeSessionId, activeSessionStatus, activeSessionRemainingTime]);
+
+  if (isLoading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
+        <Spin size="large" />
+      </div>
+    );
+  }
 
   return (
     <>
