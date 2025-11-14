@@ -9,7 +9,6 @@ on:
 
 env:
   GO_VERSION: '1.24.4'
-  NODE_VERSION: '20'
 
 jobs:
   deploy:
@@ -23,38 +22,15 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: backend/go.sum
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Build backend
+      - name: Build backend binary
         working-directory: ./backend
         run: |
           go mod download
           go build -o app ./cmd/app
 
-      - name: Build frontend
-        working-directory: ./frontend
-        run: |
-          npm ci --legacy-peer-deps
-          npm run build
-
-      - name: Create production Dockerfile
-        working-directory: ./frontend
-        run: |
-          cat > Dockerfile << 'EOF'
-          FROM nginx:alpine
-          COPY dist /usr/share/nginx/html
-          COPY nginx.conf /etc/nginx/conf.d/default.conf
-          EXPOSE 80
-          HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-            CMD wget --quiet --tries=1 --spider http://localhost/health || exit 1
-          CMD ["nginx", "-g", "daemon off;"]
-          EOF
-
-      - name: Deploy backend
+      - name: Deploy to server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -62,25 +38,11 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           passphrase: ${{ secrets.SERVER_SSH_PASSPHRASE }}
           port: ${{ secrets.SERVER_PORT || '22' }}
-          source: "backend/app,backend/configs,backend/migrations,backend/docs,backend/Makefile"
-          target: "/opt/synchronous/backend"
-          strip_components: 1
-
-      - name: Deploy frontend
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          passphrase: ${{ secrets.SERVER_SSH_PASSPHRASE }}
-          port: ${{ secrets.SERVER_PORT || '22' }}
-          source: "frontend/dist,frontend/nginx.conf,frontend/Dockerfile"
-          target: "/opt/synchronous/frontend"
-          strip_components: 1
+          source: "backend/,frontend/,docker-compose.yml,nginx/"
+          target: "/opt/synchronous"
           overwrite: true
-          rm: true
 
-      - name: Run migrations and restart services
+      - name: Deploy and restart services
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -89,28 +51,27 @@ jobs:
           passphrase: ${{ secrets.SERVER_SSH_PASSPHRASE }}
           port: ${{ secrets.SERVER_PORT || '22' }}
           script: |
-            # Run migrations
-            cd /opt/synchronous/backend
-            export DB_DSN="${{ secrets.DB_DSN }}"
-            make migrate-up || true
+            cd /opt/synchronous
             
-            # Restart backend
-            sudo systemctl restart synchronous
+            # Create .env if not exists
+            if [ ! -f .env ]; then
+              cat > .env << EOF
+            DB_USER=${{ secrets.DB_USER }}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            DB_NAME=${{ secrets.DB_NAME }}
+            MAXAPI_BASE_URL=${{ secrets.MAXAPI_BASE_URL }}
+            MAXAPI_ACCESS_TOKEN=${{ secrets.MAXAPI_ACCESS_TOKEN }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            EOF
+            fi
             
-            # Rebuild and restart frontend
-            cd /opt/synchronous/frontend
-            docker network inspect synchronous_network >/dev/null 2>&1 || docker network create synchronous_network
-            docker stop synchronous_frontend 2>/dev/null || true
-            docker rm synchronous_frontend 2>/dev/null || true
-            docker rmi synchronous_frontend:latest 2>/dev/null || true
-            docker build --no-cache -t synchronous_frontend:latest .
-            docker run -d \
-              --name synchronous_frontend \
-              --network synchronous_network \
-              --network-alias frontend \
-              -p 3000:80 \
-              --restart unless-stopped \
-              synchronous_frontend:latest
+            # Rebuild and restart services
+            docker-compose down
+            docker-compose build --no-cache frontend backend
+            docker-compose up -d
+            
+            # Wait for services to start
+            sleep 10
 
       - name: Health check
         uses: appleboy/ssh-action@v1.0.3
@@ -121,6 +82,6 @@ jobs:
           passphrase: ${{ secrets.SERVER_SSH_PASSPHRASE }}
           port: ${{ secrets.SERVER_PORT || '22' }}
           script: |
-            sleep 5
             curl -f http://localhost:8080/api/v1/health || exit 1
             curl -f http://localhost:3000/health || echo "Frontend starting..."
+            docker-compose ps
