@@ -19,36 +19,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Validate secrets
-        run: |
-          if [ -z "${{ secrets.SERVER_HOST }}" ]; then
-            echo "❌ Error: SERVER_HOST secret is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.SERVER_USER }}" ]; then
-            echo "❌ Error: SERVER_USER secret is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.SERVER_SSH_KEY }}" ]; then
-            echo "❌ Error: SERVER_SSH_KEY secret is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.DB_DSN }}" ]; then
-            echo "❌ Error: DB_DSN secret is not set"
-            exit 1
-          fi
-          
-          # Проверка на наличие passphrase (опционально, но рекомендуется если ключ защищен)
-          if [ -z "${{ secrets.SERVER_SSH_PASSPHRASE }}" ]; then
-            echo "⚠️  Warning: SERVER_SSH_PASSPHRASE is not set"
-            echo "   If your SSH key is password-protected, add SERVER_SSH_PASSPHRASE secret"
-            echo "   Or create a new key without password: ssh-keygen -t ed25519 -N '' -f ~/.ssh/github_actions"
-          else
-            echo "✅ SERVER_SSH_PASSPHRASE is set"
-          fi
-          
-          echo "✅ All required secrets are set"
-
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
@@ -70,31 +40,11 @@ jobs:
         run: |
           npm ci --legacy-peer-deps
           npm run build
-          # Проверка, что сборка прошла успешно
-          if [ ! -d "dist" ]; then
-            echo "❌ Error: frontend/dist directory not found after build"
-            exit 1
-          fi
-          echo "✅ Frontend build successful"
-          ls -la dist/ | head -10
-
-      - name: Verify frontend files
-        run: |
-          if [ ! -d "frontend/dist" ]; then
-            echo "❌ Error: frontend/dist does not exist"
-            exit 1
-          fi
-          if [ ! -f "frontend/nginx.conf" ]; then
-            echo "❌ Error: frontend/nginx.conf does not exist"
-            exit 1
-          fi
-          echo "✅ Frontend files verified"
-          echo "dist size: $(du -sh frontend/dist | cut -f1)"
-          echo "nginx.conf exists: $(test -f frontend/nginx.conf && echo 'yes' || echo 'no')"
 
       - name: Create production Dockerfile
+        working-directory: ./frontend
         run: |
-          cat > Dockerfile.prod << 'EOF'
+          cat > Dockerfile << 'EOF'
           FROM nginx:alpine
           COPY dist /usr/share/nginx/html
           COPY nginx.conf /etc/nginx/conf.d/default.conf
@@ -103,10 +53,8 @@ jobs:
             CMD wget --quiet --tries=1 --spider http://localhost/health || exit 1
           CMD ["nginx", "-g", "daemon off;"]
           EOF
-          echo "✅ Production Dockerfile created"
-          ls -la Dockerfile.prod
 
-      - name: Deploy backend to server
+      - name: Deploy backend
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -118,36 +66,7 @@ jobs:
           target: "/opt/synchronous/backend"
           strip_components: 1
 
-      - name: Create frontend archive
-        run: |
-          echo "Checking frontend files..."
-          pwd
-          ls -la frontend/ || echo "frontend directory not found"
-          ls -la frontend/dist/ | head -10 || echo "dist not found"
-          test -f frontend/nginx.conf && echo "nginx.conf exists" || echo "nginx.conf NOT found"
-          
-          echo "Creating archive in workspace directory..."
-          cd frontend
-          tar -czf ../frontend-deploy.tar.gz dist nginx.conf
-          cd ..
-          
-          echo "Verifying archive..."
-          if [ ! -f frontend-deploy.tar.gz ]; then
-            echo "❌ Archive was not created!"
-            exit 1
-          fi
-          
-          ARCHIVE_SIZE=$(stat -f%z frontend-deploy.tar.gz 2>/dev/null || stat -c%s frontend-deploy.tar.gz 2>/dev/null || echo "0")
-          if [ "$ARCHIVE_SIZE" -eq 0 ]; then
-            echo "❌ Archive is empty!"
-            exit 1
-          fi
-          
-          echo "✅ Frontend archive created successfully (size: $ARCHIVE_SIZE bytes)"
-          ls -lh frontend-deploy.tar.gz
-          tar -tzf frontend-deploy.tar.gz | head -10
-
-      - name: Deploy frontend archive
+      - name: Deploy frontend
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -155,11 +74,11 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           passphrase: ${{ secrets.SERVER_SSH_PASSPHRASE }}
           port: ${{ secrets.SERVER_PORT || '22' }}
-          source: "frontend-deploy.tar.gz"
-          target: "/tmp"
-          debug: true
+          source: "frontend/dist,frontend/nginx.conf,frontend/Dockerfile"
+          target: "/opt/synchronous/frontend"
+          strip_components: 1
 
-      - name: Extract frontend on server
+      - name: Run migrations and restart services
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -168,79 +87,28 @@ jobs:
           passphrase: ${{ secrets.SERVER_SSH_PASSPHRASE }}
           port: ${{ secrets.SERVER_PORT || '22' }}
           script: |
-            mkdir -p /opt/synchronous/frontend
-            cd /opt/synchronous/frontend
-            rm -rf dist nginx.conf Dockerfile || true
-            tar -xzf /tmp/frontend-deploy.tar.gz
-            rm /tmp/frontend-deploy.tar.gz
-            echo "✅ Frontend files extracted"
-
-      - name: Copy Dockerfile separately
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          passphrase: ${{ secrets.SERVER_SSH_PASSPHRASE }}
-          port: ${{ secrets.SERVER_PORT || '22' }}
-          source: "Dockerfile.prod"
-          target: "/opt/synchronous/frontend/Dockerfile"
-
-      - name: Run migrations
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          passphrase: ${{ secrets.SERVER_SSH_PASSPHRASE }}
-          port: ${{ secrets.SERVER_PORT || '22' }}
-          script: |
+            # Run migrations
             cd /opt/synchronous/backend
             export DB_DSN="${{ secrets.DB_DSN }}"
             make migrate-up || true
-
-      - name: Restart services
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          passphrase: ${{ secrets.SERVER_SSH_PASSPHRASE }}
-          port: ${{ secrets.SERVER_PORT || '22' }}
-          script: |
-            # Restart backend service
-            sudo systemctl restart synchronous
-            sudo systemctl status synchronous --no-pager
             
-            # Restart frontend container (force rebuild)
+            # Restart backend
+            sudo systemctl restart synchronous
+            
+            # Rebuild and restart frontend
             cd /opt/synchronous/frontend
-            if [ -f Dockerfile ]; then
-              echo "Ensuring docker network synchronous_network exists..."
-              docker network inspect synchronous_network >/dev/null 2>&1 || docker network create synchronous_network
-              if docker ps --format '{{.Names}}' | grep -q '^synchronous_nginx$'; then
-                echo "Connecting nginx container to synchronous_network (if needed)..."
-                docker network connect synchronous_network synchronous_nginx 2>/dev/null || true
-              fi
-              
-              echo "Stopping old frontend container..."
-              docker stop synchronous_frontend 2>/dev/null || true
-              docker rm synchronous_frontend 2>/dev/null || true
-              
-              echo "Rebuilding frontend container with --no-cache..."
-              docker build --no-cache -t synchronous_frontend:latest .
-              
-              echo "Starting new frontend container..."
-              docker run -d \
-                --name synchronous_frontend \
-                --network synchronous_network \
-                --network-alias frontend \
-                -p 3000:80 \
-                --restart unless-stopped \
-                synchronous_frontend:latest
-              
-              echo "✅ Frontend container restarted"
-              docker ps | grep synchronous_frontend || echo "⚠️ Container not running"
-            fi
+            docker network inspect synchronous_network >/dev/null 2>&1 || docker network create synchronous_network
+            docker stop synchronous_frontend 2>/dev/null || true
+            docker rm synchronous_frontend 2>/dev/null || true
+            docker rmi synchronous_frontend:latest 2>/dev/null || true
+            docker build --no-cache -t synchronous_frontend:latest .
+            docker run -d \
+              --name synchronous_frontend \
+              --network synchronous_network \
+              --network-alias frontend \
+              -p 3000:80 \
+              --restart unless-stopped \
+              synchronous_frontend:latest
 
       - name: Health check
         uses: appleboy/ssh-action@v1.0.3
@@ -252,7 +120,5 @@ jobs:
           port: ${{ secrets.SERVER_PORT || '22' }}
           script: |
             sleep 5
-            echo "Checking backend health..."
             curl -f http://localhost:8080/api/v1/health || exit 1
-            echo "Checking frontend health..."
-            curl -f http://localhost:3000/health || curl -f http://localhost/health || echo "Frontend health check skipped"
+            curl -f http://localhost:3000/health || echo "Frontend starting..."
