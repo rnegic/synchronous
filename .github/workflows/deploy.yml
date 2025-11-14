@@ -58,15 +58,15 @@ jobs:
             EOF
             
             # Stop services
-            docker-compose down
+            docker compose down
             
             # Remove old images to force rebuild
             docker rmi synchronous-backend:latest 2>/dev/null || true
             docker rmi synchronous-frontend:latest 2>/dev/null || true
             
             # Rebuild and start services
-            docker-compose build --no-cache backend frontend
-            docker-compose up -d
+            docker compose build --no-cache backend frontend
+            docker compose up -d
             
             # Wait for services
             sleep 15
@@ -82,4 +82,4 @@ jobs:
           script: |
             curl -f http://localhost:8080/api/v1/health || exit 1
             curl -f http://localhost:3000/health || echo "Frontend starting..."
-            docker-compose ps
+            docker compose -f /opt/synchronous/docker-compose.yml ps
