@@ -50,7 +50,7 @@ export const mockSessions: Session[] = [
     maxParticipants: 8,
     focusDuration: 25,
     breakDuration: 5,
-    status: 'waiting',
+    status: 'pending',
     createdAt: new Date().toISOString(),
   },
   {
@@ -61,7 +61,7 @@ export const mockSessions: Session[] = [
     maxParticipants: 6,
     focusDuration: 25,
     breakDuration: 5,
-    status: 'waiting',
+    status: 'pending',
     createdAt: new Date().toISOString(),
   },
   {
@@ -72,7 +72,7 @@ export const mockSessions: Session[] = [
     maxParticipants: 10,
     focusDuration: 25,
     breakDuration: 5,
-    status: 'waiting',
+    status: 'pending',
     createdAt: new Date().toISOString(),
   },
 ];

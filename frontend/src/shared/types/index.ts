@@ -11,6 +11,8 @@ export interface Task {
   createdAt: string;
 }
 
+export type SessionStatus = 'pending' | 'active' | 'paused' | 'completed';
+
 export interface Session {
   id: string;
   name: string;
@@ -19,9 +21,11 @@ export interface Session {
   maxParticipants: number;
   focusDuration: number; //  minutes
   breakDuration: number; // minutes
-  status: 'waiting' | 'active' | 'break' | 'completed';
+  status: SessionStatus;
   createdAt: string;
   startedAt?: string;
+  phase?: 'focus' | 'break';
+  remainingSeconds?: number; // seconds left in current phase
   tasks?: Task[];
 }
 
