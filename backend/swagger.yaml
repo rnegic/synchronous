@@ -172,6 +172,11 @@ components:
           format: uuid
         title:
           type: string
+        userId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Идентификатор пользователя, создавшего задачу
         completed:
           type: boolean
         completedAt:
@@ -253,6 +258,9 @@ components:
         createdAt:
           type: string
           format: date-time
+        currentCycle:
+          type: integer
+          description: Количество завершённых циклов
       required:
         - id
         - mode
@@ -871,6 +879,50 @@ paths:
                     $ref: '#/components/schemas/SessionReport'
         '401':
           description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions/{sessionId}/report:
+    get:
+      tags:
+        - sessions
+      summary: Получить отчёт по сессии
+      description: Возвращает агрегированную статистику по выбранной сессии
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Отчёт по сессии
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  report:
+                    $ref: '#/components/schemas/SessionReport'
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Нет доступа к сессии
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Сессия не найдена
           content:
             application/json:
               schema:

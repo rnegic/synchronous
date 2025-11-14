@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -383,22 +384,7 @@ func (s *SessionService) CompleteSession(sessionID string, userID string) (*enti
 		return nil, fmt.Errorf("failed to get tasks: %w", err)
 	}
 
-	completedTasks := 0
-	for _, task := range tasks {
-		if task.Completed {
-			completedTasks++
-		}
-	}
-
-	report := &entity.SessionReport{
-		SessionID:       sessionID,
-		TasksCompleted:  completedTasks,
-		TasksTotal:      len(tasks),
-		FocusTime:       0, // В реальности вычисляем из времени сессии
-		BreakTime:       0,
-		CyclesCompleted: session.CurrentCycle,
-		CompletedAt:     now,
-	}
+	report := s.buildSessionReport(session, tasks, now)
 
 	// Создаем чат для обсуждения после завершения сессии
 	// Отправляем сообщение создателю с кнопкой для создания чата
@@ -409,6 +395,120 @@ func (s *SessionService) CompleteSession(sessionID string, userID string) (*enti
 	}
 
 	return report, nil
+}
+
+func (s *SessionService) GetSessionReport(sessionID string, userID string) (*entity.SessionReport, error) {
+	session, err := s.sessionRepo.GetByID(sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("session not found: %w", err)
+	}
+	if session == nil {
+		return nil, fmt.Errorf("session not found")
+	}
+
+	if !s.hasAccessToSession(session, userID) {
+		return nil, fmt.Errorf("access denied")
+	}
+
+	tasks, err := s.taskRepo.GetBySessionID(sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tasks: %w", err)
+	}
+
+	completedAt := time.Now()
+	if session.CompletedAt != nil {
+		completedAt = *session.CompletedAt
+	} else if session.StartedAt != nil {
+		completedAt = *session.StartedAt
+	}
+
+	return s.buildSessionReport(session, tasks, completedAt), nil
+}
+
+func (s *SessionService) buildSessionReport(session *entity.Session, tasks []*entity.Task, completedAt time.Time) *entity.SessionReport {
+	cycles := session.CurrentCycle
+	if cycles <= 0 {
+		cycles = 1
+	}
+
+	focusMinutes := session.FocusDuration * cycles
+	if focusMinutes < 0 {
+		focusMinutes = 0
+	}
+
+	breakMinutes := session.BreakDuration * cycles
+	if breakMinutes < 0 {
+		breakMinutes = 0
+	}
+
+	statsByUser := make(map[string]*entity.ParticipantReport, len(session.Participants))
+	for _, participant := range session.Participants {
+		statsByUser[participant.UserID] = &entity.ParticipantReport{
+			UserID:         participant.UserID,
+			UserName:       participant.UserName,
+			AvatarURL:      participant.AvatarURL,
+			TasksCompleted: 0,
+			FocusTime:      focusMinutes,
+		}
+	}
+
+	completedTasks := 0
+	for _, task := range tasks {
+		if task.Completed {
+			completedTasks++
+			if task.UserID != nil {
+				stats := statsByUser[*task.UserID]
+				if stats == nil {
+					stats = &entity.ParticipantReport{
+						UserID:         *task.UserID,
+						UserName:       "Участник",
+						AvatarURL:      nil,
+						TasksCompleted: 0,
+						FocusTime:      focusMinutes,
+					}
+					statsByUser[*task.UserID] = stats
+				}
+				stats.TasksCompleted++
+			}
+		}
+	}
+
+	participants := make([]entity.ParticipantReport, 0, len(statsByUser))
+	for _, stats := range statsByUser {
+		participants = append(participants, *stats)
+	}
+
+	sort.Slice(participants, func(i, j int) bool {
+		if participants[i].TasksCompleted == participants[j].TasksCompleted {
+			return participants[i].UserName < participants[j].UserName
+		}
+		return participants[i].TasksCompleted > participants[j].TasksCompleted
+	})
+
+	return &entity.SessionReport{
+		SessionID:       session.ID,
+		TasksCompleted:  completedTasks,
+		TasksTotal:      len(tasks),
+		FocusTime:       focusMinutes,
+		BreakTime:       breakMinutes,
+		CyclesCompleted: cycles,
+		Participants:    participants,
+		CompletedAt:     completedAt,
+	}
+}
+
+func (s *SessionService) hasAccessToSession(session *entity.Session, userID string) bool {
+	if session.CreatorID == userID {
+		return true
+	}
+
+	for _, participant := range session.Participants {
+		if participant.UserID == userID {
+			return true
+		}
+	}
+
+	return !session.IsPrivate
 }
 
 // createDiscussionChat создает чат для обсуждения после завершения сессии

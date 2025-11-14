@@ -55,6 +55,7 @@ func (h *SessionHandler) RegisterRoutes(router *gin.RouterGroup) {
 			session.POST("/pause", h.pauseSession)
 			session.POST("/resume", h.resumeSession)
 			session.POST("/complete", h.completeSession)
+			session.GET("/report", h.getSessionReport)
 
 			// Чат
 			session.GET("/chat", h.getChatInfo)
@@ -525,28 +526,39 @@ func (h *SessionHandler) completeSession(c *gin.Context) {
 		return
 	}
 
-	participantsList := make([]gin.H, 0, len(report.Participants))
-	for _, p := range report.Participants {
-		participantsList = append(participantsList, gin.H{
-			"userId":         p.UserID,
-			"userName":       p.UserName,
-			"avatarUrl":      p.AvatarURL,
-			"tasksCompleted": p.TasksCompleted,
-			"focusTime":      p.FocusTime,
-		})
+	h.SuccessResponse(c, http.StatusOK, gin.H{
+		"report": h.buildReportResponse(report),
+	})
+}
+
+func (h *SessionHandler) getSessionReport(c *gin.Context) {
+	userID := h.GetUserID(c)
+	if userID == "" {
+		h.ErrorResponse(c, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	sessionID := c.Param("sessionId")
+	if sessionID == "" {
+		h.ErrorResponse(c, http.StatusBadRequest, "sessionId is required")
+		return
+	}
+
+	report, err := h.sessionService.GetSessionReport(sessionID, userID)
+	if err != nil {
+		switch {
+		case strings.Contains(err.Error(), "not found"):
+			h.ErrorResponse(c, http.StatusNotFound, err.Error())
+		case strings.Contains(err.Error(), "access denied"):
+			h.ErrorResponse(c, http.StatusForbidden, err.Error())
+		default:
+			h.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		}
+		return
 	}
 
 	h.SuccessResponse(c, http.StatusOK, gin.H{
-		"report": gin.H{
-			"sessionId":       report.SessionID,
-			"tasksCompleted":  report.TasksCompleted,
-			"tasksTotal":      report.TasksTotal,
-			"focusTime":       report.FocusTime,
-			"breakTime":       report.BreakTime,
-			"cyclesCompleted": report.CyclesCompleted,
-			"participants":    participantsList,
-			"completedAt":     report.CompletedAt.Format(time.RFC3339),
-		},
+		"report": h.buildReportResponse(report),
 	})
 }
 
@@ -612,6 +624,35 @@ func (h *SessionHandler) sessionToMap(session *entity.Session) gin.H {
 	}
 
 	return sessionMap
+}
+
+func (h *SessionHandler) buildReportResponse(report *entity.SessionReport) gin.H {
+	participantsList := make([]gin.H, 0, len(report.Participants))
+	for _, p := range report.Participants {
+		participant := gin.H{
+			"userId":         p.UserID,
+			"userName":       p.UserName,
+			"tasksCompleted": p.TasksCompleted,
+			"focusTime":      p.FocusTime,
+		}
+		if p.AvatarURL != nil {
+			participant["avatarUrl"] = p.AvatarURL
+		}
+		participantsList = append(participantsList, participant)
+	}
+
+	completedAt := report.CompletedAt.Format(time.RFC3339)
+
+	return gin.H{
+		"sessionId":       report.SessionID,
+		"tasksCompleted":  report.TasksCompleted,
+		"tasksTotal":      report.TasksTotal,
+		"focusTime":       report.FocusTime,
+		"breakTime":       report.BreakTime,
+		"cyclesCompleted": report.CyclesCompleted,
+		"participants":    participantsList,
+		"completedAt":     completedAt,
+	}
 }
 
 // addTask добавляет задачу

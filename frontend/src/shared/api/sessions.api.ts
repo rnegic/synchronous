@@ -169,6 +169,20 @@ export const completeSession = async (
 };
 
 /**
+ * Get session report by ID
+ * @param sessionId - Session UUID
+ * @returns Session report data
+ */
+export const getSessionReport = async (
+  sessionId: string
+): Promise<SessionReportResponse> => {
+  const response = await apiClient.get<SessionReportResponse>(
+    `/sessions/${sessionId}/report`
+  );
+  return response.data;
+};
+
+/**
  * Get participants progress for active session
  * @param sessionId - Session UUID
  * @returns Progress of all participants

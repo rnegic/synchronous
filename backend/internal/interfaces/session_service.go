@@ -17,6 +17,7 @@ type SessionService interface {
 	PauseSession(sessionID string, userID string) error
 	ResumeSession(sessionID string, userID string) error
 	CompleteSession(sessionID string, userID string) (*entity.SessionReport, error)
+	GetSessionReport(sessionID string, userID string) (*entity.SessionReport, error)
 	DeleteChatAfterDiscussion(sessionID string, userID string) error
 	HandleChatCreated(update interface{}) error
 	UpdateTask(sessionID string, taskID string, userID string, completed bool) (*entity.Task, error)
