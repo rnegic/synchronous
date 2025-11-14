@@ -46,7 +46,10 @@ func (r *sessionRepository) GetActiveByUserID(userID string) (*entity.Session, e
 	var session entity.Session
 	err := r.db.Preload("Tasks").Preload("Participants").
 		Joins("JOIN session_participants ON sessions.id = session_participants.session_id").
-		Where("session_participants.user_id = ? AND sessions.status = ?", userID, entity.SessionStatusActive).
+		Where("session_participants.user_id = ? AND sessions.status IN ?",
+			userID,
+			[]entity.SessionStatus{entity.SessionStatusActive, entity.SessionStatusPaused},
+		).
 		First(&session).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
