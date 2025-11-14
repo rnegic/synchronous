@@ -200,20 +200,48 @@ const activeSessionSlice = createSlice({
       breakDuration: number;
       tasks: Task[];
       participants?: User[];
+      status?: SessionStatus;
+      phase?: SessionPhase;
+      remainingTime?: number;
+      currentCycle?: number;
+      isStarted?: boolean;
     }>) => {
-      state.sessionId = action.payload.sessionId;
-      state.mode = action.payload.mode;
-      state.groupName = action.payload.groupName;
-      state.focusDuration = action.payload.focusDuration;
-      state.breakDuration = action.payload.breakDuration;
-      state.totalTime = action.payload.focusDuration * 60;
-      state.remainingTime = action.payload.focusDuration * 60;
-      state.tasks = action.payload.tasks;
-      state.participants = action.payload.participants || [];
-      state.phase = 'focus';
-      state.status = 'pending';
-      state.currentCycle = 1;
-      state.isStarted = false;
+      const {
+        sessionId,
+        mode,
+        groupName,
+        focusDuration,
+        breakDuration,
+        tasks,
+        participants,
+        status,
+        phase,
+        remainingTime,
+        currentCycle,
+        isStarted,
+      } = action.payload;
+
+      const resolvedPhase: SessionPhase = phase ?? 'focus';
+      const totalSeconds = (resolvedPhase === 'focus' ? focusDuration : breakDuration) * 60;
+      const nextStatus: SessionStatus = status ?? 'pending';
+      const nextRemaining = Math.min(
+        totalSeconds,
+        Math.max(0, remainingTime ?? totalSeconds)
+      );
+
+      state.sessionId = sessionId;
+      state.mode = mode;
+      state.groupName = groupName;
+      state.focusDuration = focusDuration;
+      state.breakDuration = breakDuration;
+      state.totalTime = totalSeconds;
+      state.remainingTime = nextRemaining;
+      state.tasks = tasks;
+      state.participants = participants || [];
+      state.phase = resolvedPhase;
+      state.status = nextStatus;
+      state.currentCycle = currentCycle ?? 1;
+      state.isStarted = isStarted ?? (nextStatus !== 'pending');
     },
     
     // Timer controls

@@ -10,6 +10,8 @@ import {
   selectSessionId,
   selectIsCompleted,
   selectIsGroupMode,
+  selectStatus,
+  selectIsStarted,
 } from '@/entities/session/model/activeSessionSelectors';
 import {
   selectTasks,
@@ -18,13 +20,60 @@ import {
   selectFocusDuration,
   selectBreakDuration,
 } from '@/entities/session/model/selectors';
-import { startSession } from '@/entities/session/model/activeSessionSlice';
+import { startSession, type SessionPhase, type SessionStatus } from '@/entities/session/model/activeSessionSlice';
 import { sessionsApi, getErrorMessage } from '@/shared/api';
-import type { ParticipantProgress } from '@/shared/api';
+import type { ParticipantProgress, Session as ApiSession } from '@/shared/api';
 import { useMaxWebApp } from '@/shared/hooks/useMaxWebApp';
 import { useWebSocketEvent } from '@/shared/hooks/useWebSocket';
 import type { Task } from '@/shared/types';
 import './styles.css';
+
+const mapSessionStatus = (status: ApiSession['status']): SessionStatus => {
+  switch (status) {
+    case 'active':
+      return 'running';
+    case 'paused':
+      return 'paused';
+    case 'completed':
+      return 'completed';
+    default:
+      return 'pending';
+  }
+};
+
+const derivePhaseState = (session: ApiSession): { phase: SessionPhase; remainingSeconds: number } => {
+  const focusSeconds = session.focusDuration * 60;
+  const breakSeconds = session.breakDuration * 60;
+  const defaultPhase: SessionPhase = 'focus';
+  const defaultRemaining = focusSeconds;
+
+  if (!session.startedAt) {
+    return { phase: defaultPhase, remainingSeconds: defaultRemaining };
+  }
+
+  const startTimestamp = new Date(session.startedAt).getTime();
+  const elapsed = Math.max(0, Math.floor((Date.now() - startTimestamp) / 1000));
+  const cycleLength = focusSeconds + Math.max(breakSeconds, 0);
+
+  if (cycleLength <= 0) {
+    return { phase: defaultPhase, remainingSeconds: defaultRemaining };
+  }
+
+  const cycleProgress = elapsed % cycleLength;
+
+  if (cycleProgress < focusSeconds || breakSeconds === 0) {
+    return {
+      phase: 'focus',
+      remainingSeconds: Math.max(focusSeconds - cycleProgress, 0),
+    };
+  }
+
+  const breakProgress = cycleProgress - focusSeconds;
+  return {
+    phase: 'break',
+    remainingSeconds: Math.max(breakSeconds - breakProgress, 0),
+  };
+};
 
 export function FocusSessionPage() {
   const dispatch = useAppDispatch();
@@ -43,6 +92,8 @@ export function FocusSessionPage() {
   const reduxSessionId = useAppSelector(selectSessionId);
   const isCompleted = useAppSelector(selectIsCompleted);
   const isGroupMode = useAppSelector(selectIsGroupMode);
+  const sessionStatus = useAppSelector(selectStatus);
+  const isStarted = useAppSelector(selectIsStarted);
   
   const sessionId = routeSessionId || reduxSessionId;
   
@@ -76,6 +127,22 @@ export function FocusSessionPage() {
         try {
           const response = await sessionsApi.getSessionById(routeSessionId);
           const { session } = response;
+          const normalizedStatus = mapSessionStatus(session.status);
+          const { phase, remainingSeconds } = derivePhaseState(session);
+          const hydratedParticipants = session.participants?.map(p => ({
+            id: p.userId,
+            name: p.userName,
+            avatar: p.avatarUrl,
+          })) || [];
+          const backendTasks = session.tasks.map(task => ({
+            id: task.id,
+            title: task.title,
+            completed: task.completed,
+            createdAt: task.createdAt,
+          }));
+          const cycle = session.currentCycle && session.currentCycle > 0
+            ? session.currentCycle
+            : 1;
           
           // Initialize Redux with backend data
           dispatch(startSession({
@@ -84,17 +151,13 @@ export function FocusSessionPage() {
             groupName: session.groupName,
             focusDuration: session.focusDuration,
             breakDuration: session.breakDuration,
-            tasks: session.tasks.map(task => ({
-              id: task.id,
-              title: task.title,
-              completed: task.completed,
-              createdAt: task.createdAt,
-            })),
-            participants: session.participants?.map(p => ({
-              id: p.userId,
-              name: p.userName,
-              avatar: p.avatarUrl,
-            })) || [],
+            tasks: backendTasks,
+            participants: hydratedParticipants,
+            status: normalizedStatus,
+            phase,
+            remainingTime: remainingSeconds,
+            currentCycle: cycle,
+            isStarted: normalizedStatus !== 'pending',
           }));
         } catch (error) {
           console.error('[FocusSession] Failed to load session:', error);
@@ -135,13 +198,18 @@ export function FocusSessionPage() {
   
   // Auto-start session on mount for real backend sessions
   useEffect(() => {
-    if (sessionId && reduxSessionId && isMaxEnvironment) {
-      // Auto-start the session timer when entering focus screen
+    if (
+      sessionId &&
+      reduxSessionId &&
+      isMaxEnvironment &&
+      sessionStatus === 'pending' &&
+      !isStarted
+    ) {
       import('@/entities/session/model/activeSessionSlice').then(({ startSessionAsync }) => {
         dispatch(startSessionAsync());
       });
     }
-  }, [sessionId, reduxSessionId, isMaxEnvironment, dispatch]);
+  }, [sessionId, reduxSessionId, isMaxEnvironment, sessionStatus, isStarted, dispatch]);
   
   // Load participants progress for group sessions
   useEffect(() => {

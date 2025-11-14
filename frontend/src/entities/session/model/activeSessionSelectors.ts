@@ -42,6 +42,7 @@ export const selectTaskProgress = (state: RootState) => {
 export const selectParticipants = (state: RootState) => state.activeSession.participants;
 export const selectParticipantsCount = (state: RootState) => state.activeSession.participants.length;
 export const selectInviteLink = (state: RootState) => state.activeSession.inviteLink;
+export const selectIsStarted = (state: RootState) => state.activeSession.isStarted;
 
 // Combined state checks
 export const selectIsRunning = (state: RootState) => state.activeSession.status === 'running';
