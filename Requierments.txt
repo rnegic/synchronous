@@ -1,4 +1,4 @@
-Requierments for synchronous platform
+Описание всех библиотек и версий
 ====================================
 
 Backend (Go modules)
