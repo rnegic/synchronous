@@ -147,7 +147,26 @@ func (s *SessionService) GetSession(sessionID string, userID string) (*entity.Se
 }
 
 func (s *SessionService) GetActiveSession(userID string) (*entity.Session, error) {
-	return s.sessionRepo.GetActiveByUserID(userID)
+	session, err := s.sessionRepo.GetActiveByUserID(userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get active session: %w", err)
+	}
+	if session == nil {
+		return nil, fmt.Errorf("active session not found")
+	}
+
+	// Load only tasks that belong to the current user to avoid leaking private notes
+	tasks, err := s.taskRepo.GetBySessionIDAndUserID(session.ID, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tasks: %w", err)
+	}
+
+	session.Tasks = make([]entity.Task, 0, len(tasks))
+	for _, task := range tasks {
+		session.Tasks = append(session.Tasks, *task)
+	}
+
+	return session, nil
 }
 
 func (s *SessionService) GetHistory(userID string, page, limit int) ([]*entity.Session, int, error) {

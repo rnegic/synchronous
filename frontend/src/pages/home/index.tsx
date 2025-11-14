@@ -115,8 +115,7 @@ export function HomePage() {
   };
 
   const handleJoinActiveSession = (sessionId: string) => {
-    // Navigate directly to focus screen for active session
-    navigate(`/focus/${sessionId}`);
+    navigate(`/focus-session/${sessionId}`);
   };
 
   if (isLoading) {
