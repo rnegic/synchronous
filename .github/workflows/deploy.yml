@@ -57,12 +57,15 @@ jobs:
             JWT_SECRET=${{ secrets.JWT_SECRET }}
             EOF
             
-            # Stop services
+            # Stop all related containers (including old ones)
+            docker stop synchronous_frontend synchronous_backend synchronous_postgres synchronous_swagger_ui synchronous_nginx 2>/dev/null || true
+            docker rm synchronous_frontend synchronous_backend synchronous_postgres synchronous_swagger_ui synchronous_nginx 2>/dev/null || true
+            
+            # Stop docker-compose services
             docker compose down
             
             # Remove old images to force rebuild
-            docker rmi synchronous-backend:latest 2>/dev/null || true
-            docker rmi synchronous-frontend:latest 2>/dev/null || true
+            docker rmi synchronous-backend synchronous-frontend 2>/dev/null || true
             
             # Rebuild and start services
             docker compose build --no-cache backend frontend
